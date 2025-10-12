@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .hover-text-effect {
+    position: relative;
+    display: inline-block;
+    cursor: default;
+    transition: all 0.3s ease;
+  }
+
+  .hover-text-effect:hover {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.5));
+  }
+
+  .hover-text-effect::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #1e40af);
+    transition: width 0.4s ease;
+  }
+
+  .hover-text-effect:hover::after {
+    width: 100%;
+  }
+}
