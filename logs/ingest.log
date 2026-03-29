@@ -1,0 +1,101 @@
+2026-03-23 11:45:49 | INFO     | ============================================================
+2026-03-23 11:45:49 | INFO     | InsightAI — Ingestion Pipeline Starting
+2026-03-23 11:45:49 | INFO     | ============================================================
+2026-03-23 11:45:49 | INFO     | Loading embedding model: BAAI/bge-base-en-v1.5
+2026-03-23 11:47:23 | INFO     | Found 12 PDF file(s) in 'data/'.
+2026-03-23 11:54:35 | INFO     | ============================================================
+2026-03-23 11:54:35 | INFO     | InsightAI — Ingestion Pipeline Starting
+2026-03-23 11:54:35 | INFO     | ============================================================
+2026-03-23 11:54:35 | INFO     | Loading embedding model: BAAI/bge-base-en-v1.5
+2026-03-23 11:54:41 | INFO     | Found 12 PDF file(s) in 'data/'.
+2026-03-23 11:54:41 | INFO     | Loading: HDFC-Life-Cancer-Care-101N106V04-Policy-Document.pdf
+2026-03-23 11:55:06 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cancer-Care-101N106V04-Policy-Document.pdf'.
+2026-03-23 11:55:06 | INFO     | Loading: HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf
+2026-03-23 11:55:11 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf'.
+2026-03-23 11:55:11 | INFO     | Loading: HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Regular-Pay.pdf
+2026-03-23 11:55:19 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Regular-Pay.pdf'.
+2026-03-23 11:55:19 | INFO     | Loading: HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf
+2026-03-23 11:55:27 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf'.
+2026-03-23 11:55:27 | INFO     | Loading: HDFC-Life-Cardiac-Care-Customer-Information-Sheet.pdf
+2026-03-23 11:55:32 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cardiac-Care-Customer-Information-Sheet.pdf'.
+2026-03-23 11:55:32 | INFO     | Loading: HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Regular-Pay.pdf
+2026-03-23 11:55:42 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Regular-Pay.pdf'.
+2026-03-23 11:55:42 | INFO     | Loading: HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Single-Pay.pdf
+2026-03-23 11:55:51 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Single-Pay.pdf'.
+2026-03-23 11:55:51 | INFO     | Loading: HDFC-Life-Easy-Health-Customer-Information-Sheet.pdf
+2026-03-23 11:55:56 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Easy-Health-Customer-Information-Sheet.pdf'.
+2026-03-23 11:55:56 | INFO     | Loading: IRDAI Health Companion-Health Insurance Plan_GEN617.pdf
+2026-03-23 11:56:06 | SUCCESS  |   ✓ Loaded 1 element(s) from 'IRDAI Health Companion-Health Insurance Plan_GEN617.pdf'.
+2026-03-23 11:56:06 | INFO     | Loading: SBI Credit Guard TnC.pdf
+2026-03-23 11:56:06 | ERROR    |   ✗ Failed to load 'SBI Credit Guard TnC.pdf': Unable to get page count. Is poppler installed and in PATH?
+2026-03-23 11:56:06 | INFO     | Loading: SBI Gen Health Insurance Policy.pdf
+2026-03-23 11:56:13 | SUCCESS  |   ✓ Loaded 1 element(s) from 'SBI Gen Health Insurance Policy.pdf'.
+2026-03-23 11:56:13 | INFO     | Loading: UIICL_20230913_Policy_Wordings_IHIP.pdf
+2026-03-23 11:56:24 | SUCCESS  |   ✓ Loaded 1 element(s) from 'UIICL_20230913_Policy_Wordings_IHIP.pdf'.
+2026-03-23 11:56:24 | INFO     | Total documents loaded: 11
+2026-03-23 11:56:24 | INFO     | Splitting documents into nodes (chunk_size=768, overlap=150)…
+2026-03-23 11:56:25 | INFO     | Created 394 node(s); 108 assigned a specific section.
+2026-03-23 11:56:25 | INFO     | Connecting to Weaviate at http://localhost:8080 …
+2026-03-23 11:56:26 | SUCCESS  | Connected to Weaviate successfully.
+2026-03-23 11:56:27 | INFO     | Embedding and indexing 394 nodes into Weaviate…
+2026-03-23 11:56:27 | INFO     | This may take a while depending on your CPU/GPU speed.
+2026-03-23 11:59:16 | INFO     | Persisting index metadata to './storage/' …
+2026-03-23 11:59:16 | SUCCESS  | Index metadata saved to './storage/'.
+2026-03-23 11:59:16 | INFO     | Weaviate client connection closed.
+2026-03-23 11:59:16 | INFO     | ============================================================
+2026-03-23 11:59:16 | SUCCESS  | Ingestion complete!
+2026-03-23 11:59:16 | INFO     |   Documents loaded : 11
+2026-03-23 11:59:16 | INFO     |   Nodes indexed    : 394
+2026-03-23 11:59:16 | INFO     |   Weaviate class   : InsurancePolicies
+2026-03-23 11:59:16 | INFO     |   Persisted to     : ./storage/
+2026-03-23 11:59:16 | INFO     | ============================================================
+2026-03-23 14:02:13 | INFO     | ============================================================
+2026-03-23 14:02:13 | INFO     | InsightAI — Ingestion Pipeline v2 Starting
+2026-03-23 14:02:13 | INFO     | ============================================================
+2026-03-23 14:02:13 | INFO     | Loading embedding model: BAAI/bge-base-en-v1.5
+2026-03-23 14:02:20 | INFO     | Found 12 PDF file(s) in 'data/'.
+2026-03-23 14:02:20 | INFO     | Using Unstructured strategy: 'hi_res' (this may be slow for hi_res)
+2026-03-23 14:02:20 | INFO     | Loading: HDFC-Life-Cancer-Care-101N106V04-Policy-Document.pdf
+2026-03-23 14:02:37 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cancer-Care-101N106V04-Policy-Document.pdf'.
+2026-03-23 14:02:37 | INFO     | Loading: HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf
+2026-03-23 14:02:41 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf'.
+2026-03-23 14:02:41 | INFO     | Loading: HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Regular-Pay.pdf
+2026-03-23 14:02:49 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Regular-Pay.pdf'.
+2026-03-23 14:02:49 | INFO     | Loading: HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf
+2026-03-23 14:02:57 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf'.
+2026-03-23 14:02:57 | INFO     | Loading: HDFC-Life-Cardiac-Care-Customer-Information-Sheet.pdf
+2026-03-23 14:03:03 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Cardiac-Care-Customer-Information-Sheet.pdf'.
+2026-03-23 14:03:03 | INFO     | Loading: HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Regular-Pay.pdf
+2026-03-23 14:03:13 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Regular-Pay.pdf'.
+2026-03-23 14:03:13 | INFO     | Loading: HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Single-Pay.pdf
+2026-03-23 14:03:24 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Single-Pay.pdf'.
+2026-03-23 14:03:24 | INFO     | Loading: HDFC-Life-Easy-Health-Customer-Information-Sheet.pdf
+2026-03-23 14:03:29 | SUCCESS  |   ✓ Loaded 1 element(s) from 'HDFC-Life-Easy-Health-Customer-Information-Sheet.pdf'.
+2026-03-23 14:03:29 | INFO     | Loading: IRDAI Health Companion-Health Insurance Plan_GEN617.pdf
+2026-03-23 14:03:39 | SUCCESS  |   ✓ Loaded 1 element(s) from 'IRDAI Health Companion-Health Insurance Plan_GEN617.pdf'.
+2026-03-23 14:03:39 | INFO     | Loading: SBI Credit Guard TnC.pdf
+2026-03-23 14:03:39 | ERROR    |   ✗ Failed to load 'SBI Credit Guard TnC.pdf': Unable to get page count. Is poppler installed and in PATH?
+2026-03-23 14:03:39 | INFO     | Loading: SBI Gen Health Insurance Policy.pdf
+2026-03-23 14:03:47 | SUCCESS  |   ✓ Loaded 1 element(s) from 'SBI Gen Health Insurance Policy.pdf'.
+2026-03-23 14:03:47 | INFO     | Loading: UIICL_20230913_Policy_Wordings_IHIP.pdf
+2026-03-23 14:03:58 | SUCCESS  |   ✓ Loaded 1 element(s) from 'UIICL_20230913_Policy_Wordings_IHIP.pdf'.
+2026-03-23 14:03:58 | INFO     | Total raw documents loaded: 11
+2026-03-23 14:03:58 | INFO     | Splitting into nodes (chunk_size=512, overlap=128)…
+2026-03-23 14:03:59 | INFO     | Created 776 node(s) | 555 with section_title | 124 with clause_ref
+2026-03-23 14:03:59 | INFO     | Connecting to Weaviate at http://localhost:8080…
+2026-03-23 14:04:01 | SUCCESS  | Connected to Weaviate.
+2026-03-23 14:04:01 | SUCCESS  | Deleted existing collection 'InsurancePolicies'.
+2026-03-23 14:04:01 | INFO     | Embedding and indexing 776 nodes into Weaviate…
+2026-03-23 14:04:01 | INFO     | This may take several minutes on CPU.
+2026-03-23 14:09:51 | INFO     | Persisting index metadata to './storage/'…
+2026-03-23 14:09:51 | SUCCESS  | Index metadata saved to './storage/'.
+2026-03-23 14:09:51 | INFO     | Weaviate connection closed.
+2026-03-23 14:09:51 | INFO     | ============================================================
+2026-03-23 14:09:51 | SUCCESS  | Ingestion v2 complete!
+2026-03-23 14:09:51 | INFO     |   Documents loaded : 11
+2026-03-23 14:09:51 | INFO     |   Nodes indexed    : 776
+2026-03-23 14:09:51 | INFO     |   Chunk size       : 512 tokens
+2026-03-23 14:09:51 | INFO     |   Chunk overlap    : 128 tokens
+2026-03-23 14:09:51 | INFO     |   Weaviate class   : InsurancePolicies
+2026-03-23 14:09:51 | INFO     |   Persisted to     : ./storage/
+2026-03-23 14:09:51 | INFO     | ============================================================

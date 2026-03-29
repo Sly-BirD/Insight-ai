@@ -1,0 +1,83 @@
+[
+  {
+    "query": "What is the waiting period for pre-existing diseases in HDFC Easy Health policy?",
+    "answer": {
+      "decision": "informational",
+      "justification": "The policy document does not explicitly mention the waiting period for pre-existing diseases in HDFC Easy Health policy. However, it does mention a 60-day waiting period for Daily Hospital Cash Benefit and Surgical Benefit, a 90-day waiting period for Critical Illness claims, and a 1 or 2 years waiting period for certain injuries, sicknesses, diseases, or surgical procedures.",
+      "clauses": [
+        "File: HDFC-Life-Easy-Health-101N110V03-Policy-Bond-Regular-Pay.pdf | Page: 1 | Section: Waiting Period | Clause: Part F",
+        "File: HDFC-Life-Cancer-Care-101N106V04-Policy-Document.pdf | Page: 1 | Section: Claims Procedure",
+        "File: HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf | Page: 1 | Section: Waiting Period",
+        "File: HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf | Page: 1 | Section: Waiting Period | Clause: Clause 1"
+      ],
+      "confidence": 50
+    },
+    "audit": {
+      "score": 80,
+      "flags": [
+        "incomplete"
+      ],
+      "summary": "The generated answer is mostly faithful and accurate but fails to provide the waiting period for pre-existing diseases in HDFC Easy Health policy."
+    },
+    "retrieval_info": {
+      "chunks_used": 5,
+      "rewrites_done": 0,
+      "final_query": "What is the waiting period for pre-existing diseases in HDFC Easy Health policy?"
+    }
+  },
+  {
+    "query": "What are the major exclusions under HDFC Life Cardiac Care policy?",
+    "answer": {
+      "decision": "informational",
+      "justification": "The major exclusions under HDFC Life Cardiac Care policy are listed in the policy document. However, to provide a structured answer, we will list the exclusions as per the policy document.",
+      "clauses": [
+        "HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf:1:2. Exclusions",
+        "HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf:1:1. No benefits will be payable for any condition(s) which is a direct or indirect result of any Pre-Existing Disease unless Life Assured has disclosed the same at the time of Proposal or date of reinstatement whichever is later and the accepted same.",
+        "HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf:1:2. Any disease/disorder of the heart having occurred and/or Hospitalization and/or treatment (availed or advised) for the same within the Waiting Period.",
+        "HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf:1:3. Failure to seek or follow Medical Advice or the Life Assured has delayed medical treatment in order to circumvent the Waiting Period or other conditions and restriction applying to this Policy.",
+        "HDFC-Life-Cardiac-Care-101N117V03-Policy-Bond-Single-Pay.pdf:1:4. Self-inflicted injuries, suicide and immorality, and deliberate participation of the Life Assured in an illegal or criminal act.",
+        "HDFC-Life-Cardiac-Care-Customer-Information-Sheet.pdf:1:part of all time bound exclusions and waiting period will apply.",
+        "HDFC-Life-Cardiac-Care-Customer-Information-Sheet.pdf:1:If the Policy is revived after 60 days, all time bound exclusions and waiting period will be applied afresh."
+      ],
+      "confidence": 100
+    },
+    "audit": {
+      "score": 95,
+      "flags": [
+        "incomplete"
+      ],
+      "summary": "The generated answer is mostly faithful and accurate, but it lacks some key information about exclusions and waiting periods."
+    },
+    "retrieval_info": {
+      "chunks_used": 5,
+      "rewrites_done": 0,
+      "final_query": "What are the major exclusions under HDFC Life Cardiac Care policy?"
+    }
+  },
+  {
+    "query": "Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?",
+    "answer": {
+      "decision": "approve",
+      "justification": "Cancer treatment is covered under HDFC Life Cancer Care plan as per the policy document.",
+      "clauses": [
+        "HDFC-Life-Cancer-Care-Plan-Customer-Information-Sheet.pdf:1:Early Stage cancer or Carcinoma-in-situ (CIS) Carcinoma Major Cancer",
+        "HDFC-Life-Cancer-Care-101N106V04-Policy-Document.pdf:1:Upon the diagnosis of the listed major cancers, a monthly income equal to 1% of the Applicable Sum Insured will be payable for a fixed period of 5 years."
+      ],
+      "confidence": 100
+    },
+    "audit": {
+      "score": 80,
+      "flags": [
+        "The answer does not explicitly state that the sum insured is the initial sum insured plus any accruals under the Increased Benefits defined above.",
+        "The answer does not mention the waiting period for cancer diagnosis benefits.",
+        "The answer does not mention the exclusions set out in Part F Clause 1(Exclusions)."
+      ],
+      "summary": "The generated answer is mostly faithful and accurate, but lacks completeness and caution."
+    },
+    "retrieval_info": {
+      "chunks_used": 5,
+      "rewrites_done": 0,
+      "final_query": "Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?"
+    }
+  }
+]

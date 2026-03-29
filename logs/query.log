@@ -1,0 +1,321 @@
+2026-03-23 12:49:38 | INFO     | Initialising retriever…
+2026-03-23 12:49:47 | SUCCESS  | Connected to Weaviate.
+2026-03-23 12:49:47 | SUCCESS  | Index loaded from storage.
+2026-03-23 12:49:47 | ERROR    | Startup failed: TOGETHER_API_KEY is not set.
+  Windows : set TOGETHER_API_KEY=sk-...
+  Linux   : export TOGETHER_API_KEY=sk-...
+2026-03-23 12:50:25 | INFO     | Initialising retriever…
+2026-03-23 12:50:33 | SUCCESS  | Connected to Weaviate.
+2026-03-23 12:50:33 | SUCCESS  | Index loaded from storage.
+2026-03-23 12:50:33 | ERROR    | Startup failed: TOGETHER_API_KEY is not set.
+  Windows : set TOGETHER_API_KEY=sk-...
+  Linux   : export TOGETHER_API_KEY=sk-...
+2026-03-23 13:13:34 | INFO     | Initialising retriever…
+2026-03-23 13:13:48 | SUCCESS  | Connected to Weaviate.
+2026-03-23 13:13:48 | SUCCESS  | Index loaded from storage.
+2026-03-23 13:13:48 | INFO     | Initialising LLM: meta-llama/Llama-3.3-70B-Instruct-Turbo
+2026-03-23 13:13:48 | ERROR    | Startup failed: module 'langchain' has no attribute 'verbose'
+2026-03-23 13:25:31 | INFO     | Initialising retriever…
+2026-03-23 13:25:40 | SUCCESS  | Connected to Weaviate.
+2026-03-23 13:25:40 | SUCCESS  | Index loaded from storage.
+2026-03-23 13:25:40 | INFO     | Initialising LLM: meta-llama/Llama-3.3-70B-Instruct-Turbo
+2026-03-23 13:25:41 | INFO     | 
+============================================================
+2026-03-23 13:25:41 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 13:25:41 | INFO     | ============================================================
+2026-03-23 13:25:41 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 13:25:42 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:25:42 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:25:44 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBd1pX-3pDw3Z-9e0bdfe85aee85bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:25:44 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:25:44 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:25:44 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBd2BX-3pDw3Z-9e0bdff17d2585bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:25:44 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:25:45 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBd2KZ-3pDw3Z-9e0bdff48df485bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:25:45 | INFO     | 
+============================================================
+2026-03-23 13:25:45 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 13:25:45 | INFO     | ============================================================
+2026-03-23 13:25:45 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 13:25:45 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:25:45 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:25:46 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBd2YT-62bZhn-9e0bdff87f0d85bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:25:46 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:25:46 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:25:47 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBd2kr-3pDw3Z-9e0bdffdc85e85bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:25:47 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:25:47 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBd34r-62bZhn-9e0be0041a2985bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:25:47 | INFO     | 
+============================================================
+2026-03-23 13:25:47 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 13:25:47 | INFO     | ============================================================
+2026-03-23 13:25:47 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 13:25:47 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:25:47 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:25:48 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBd3Hj-62bZhn-9e0be0089b6285bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:25:48 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:25:48 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:25:50 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBd3Zy-zfFMX-9e0be00c4c8a85bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:25:50 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:25:51 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBd4EE-62bZhn-9e0be01c78de85bf', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:25:51 | INFO     | Weaviate connection closed.
+2026-03-23 13:30:28 | INFO     | Initialising retriever…
+2026-03-23 13:30:37 | SUCCESS  | Connected to Weaviate.
+2026-03-23 13:30:37 | SUCCESS  | Index loaded from storage.
+2026-03-23 13:30:37 | INFO     | Initialising LLM: meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo
+2026-03-23 13:30:38 | INFO     | 
+============================================================
+2026-03-23 13:30:38 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 13:30:38 | INFO     | ============================================================
+2026-03-23 13:30:38 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 13:30:38 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:30:38 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:30:39 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBeXmN-2kFHot-9e0be7235c9760b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:30:39 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:30:39 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:30:39 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBeXvc-2kFHot-9e0be726a91060b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:30:39 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:30:40 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBeY4u-2kFHot-9e0be729ad9160b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:30:40 | INFO     | 
+============================================================
+2026-03-23 13:30:40 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 13:30:40 | INFO     | ============================================================
+2026-03-23 13:30:40 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 13:30:40 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:30:40 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:30:40 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBeYEc-2kFHot-9e0be72d3a7060b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:30:40 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:30:40 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:30:41 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBeYPj-2kFHot-9e0be7304edc60b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:30:41 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:30:42 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBeYaJ-2kFHot-9e0be7341c5760b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:30:42 | INFO     | 
+============================================================
+2026-03-23 13:30:42 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 13:30:42 | INFO     | ============================================================
+2026-03-23 13:30:42 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 13:30:42 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:30:42 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:30:43 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBeYpe-2kFHot-9e0be7388a6660b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:30:43 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:30:43 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:30:43 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBeZ2W-2kFHot-9e0be73df9a860b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:30:43 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:30:43 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBeZ9V-2kFHot-9e0be740ce6a60b0', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:30:43 | INFO     | Weaviate connection closed.
+2026-03-23 13:31:38 | INFO     | Initialising retriever…
+2026-03-23 13:31:46 | SUCCESS  | Connected to Weaviate.
+2026-03-23 13:31:46 | SUCCESS  | Index loaded from storage.
+2026-03-23 13:31:46 | INFO     | Initialising LLM: meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo
+2026-03-23 13:31:47 | INFO     | 
+============================================================
+2026-03-23 13:31:47 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 13:31:47 | INFO     | ============================================================
+2026-03-23 13:31:47 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 13:31:48 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:31:48 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:31:49 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBetVw-2kFHot-9e0be8d6ce86a2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:31:49 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:31:49 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:31:49 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBetdb-2kFHot-9e0be8da3da7a2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:31:49 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:31:49 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBetmF-2kFHot-9e0be8dcfc30a2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:31:49 | INFO     | 
+============================================================
+2026-03-23 13:31:49 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 13:31:49 | INFO     | ============================================================
+2026-03-23 13:31:49 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 13:31:50 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:31:50 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:31:50 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBetv7-2kFHot-9e0be8e00a9da2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:31:50 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:31:50 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:31:50 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBeu34-2kFHot-9e0be8e2b943a2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:31:50 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:31:51 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBeuAx-2kFHot-9e0be8e55f90a2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:31:51 | INFO     | 
+============================================================
+2026-03-23 13:31:51 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 13:31:51 | INFO     | ============================================================
+2026-03-23 13:31:51 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 13:31:51 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:31:51 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:31:51 | ERROR    | [grade_relevance] Parse error: Error code: 402 - {'id': 'ocBeuLg-2kFHot-9e0be8e89eaea2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}. Defaulting to relevant=True.
+2026-03-23 13:31:51 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:31:51 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:31:52 | ERROR    | [generate_answer] Failed: Error code: 402 - {'id': 'ocBeuTd-2kFHot-9e0be8ebad7fa2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:31:52 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:31:52 | ERROR    | [audit_answer] Parse error: Error code: 402 - {'id': 'ocBeubJ-2kFHot-9e0be8ee5b2fa2ad', 'error': {'message': "Credit limit exceeded, please [add credits](https://api.together.ai/settings/billing). If you've already made a payment, please wait up to 5 minutes for balances to update and try again.", 'type': 'credit_limit', 'param': None, 'code': None}}
+2026-03-23 13:31:52 | INFO     | Weaviate connection closed.
+2026-03-23 13:40:48 | INFO     | Initialising retriever…
+2026-03-23 13:40:54 | SUCCESS  | Connected to Weaviate.
+2026-03-23 13:40:54 | SUCCESS  | Index loaded from storage.
+2026-03-23 13:40:55 | INFO     | 
+============================================================
+2026-03-23 13:40:55 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 13:40:55 | INFO     | ============================================================
+2026-03-23 13:40:55 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 13:40:55 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:40:55 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:40:56 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses regarding waiting period for pre-existing diseases in HDFC Easy Health policy.
+2026-03-23 13:40:56 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:40:56 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:41:00 | INFO     | [generate_answer] Decision=partial | Confidence=60%
+2026-03-23 13:41:00 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:41:35 | INFO     | [audit_answer] Score=80/100 | Flags=3
+2026-03-23 13:41:35 | INFO     | 
+============================================================
+2026-03-23 13:41:35 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 13:41:35 | INFO     | ============================================================
+2026-03-23 13:41:35 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 13:41:35 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:41:35 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:42:05 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy exclusions related to cardiac care.
+2026-03-23 13:42:05 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:42:05 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:42:36 | INFO     | [generate_answer] Decision=informational | Confidence=50%
+2026-03-23 13:42:36 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:43:09 | INFO     | [audit_answer] Score=80/100 | Flags=2
+2026-03-23 13:43:09 | INFO     | 
+============================================================
+2026-03-23 13:43:09 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 13:43:09 | INFO     | ============================================================
+2026-03-23 13:43:09 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 13:43:09 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 13:43:09 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 13:43:37 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses, including cancer treatment coverage and sum insured details.
+2026-03-23 13:43:37 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 13:43:37 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 13:44:05 | INFO     | [generate_answer] Decision=approve | Confidence=100%
+2026-03-23 13:44:05 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 13:44:36 | INFO     | [audit_answer] Score=85/100 | Flags=3
+2026-03-23 13:44:36 | INFO     | Weaviate connection closed.
+2026-03-23 14:19:13 | INFO     | Initialising retriever…
+2026-03-23 14:19:21 | SUCCESS  | Connected to Weaviate.
+2026-03-23 14:19:21 | SUCCESS  | Index loaded from storage.
+2026-03-23 14:19:22 | INFO     | 
+============================================================
+2026-03-23 14:19:22 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 14:19:22 | INFO     | ============================================================
+2026-03-23 14:19:22 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 14:19:22 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:19:22 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:19:23 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses regarding waiting period for pre-existing diseases in HDFC Easy Health policy.
+2026-03-23 14:19:23 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:19:23 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:19:23 | INFO     | [generate_answer] Decision=informational | Confidence=80%
+2026-03-23 14:19:24 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:19:26 | INFO     | [audit_answer] Score=80/100 | Flags=1
+2026-03-23 14:19:26 | INFO     | 
+============================================================
+2026-03-23 14:19:26 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 14:19:26 | INFO     | ============================================================
+2026-03-23 14:19:26 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 14:19:26 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:19:26 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:19:44 | ERROR    | [grade_relevance] Parse error: Extra data: line 7 column 1 (char 186). Defaulting to relevant=True.
+2026-03-23 14:19:44 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:19:44 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:20:03 | INFO     | [generate_answer] Decision=informational | Confidence=80%
+2026-03-23 14:20:03 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:20:26 | INFO     | [audit_answer] Score=85/100 | Flags=2
+2026-03-23 14:20:26 | INFO     | 
+============================================================
+2026-03-23 14:20:26 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 14:20:26 | INFO     | ============================================================
+2026-03-23 14:20:26 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 14:20:26 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:20:26 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:20:45 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses regarding cancer treatment and sum insured.
+2026-03-23 14:20:45 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:20:45 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:21:04 | INFO     | [generate_answer] Decision=approve | Confidence=80%
+2026-03-23 14:21:04 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:21:26 | INFO     | [audit_answer] Score=85/100 | Flags=3
+2026-03-23 14:21:26 | INFO     | Weaviate connection closed.
+2026-03-23 14:34:58 | INFO     | Initialising retriever…
+2026-03-23 14:35:07 | SUCCESS  | Connected to Weaviate.
+2026-03-23 14:35:07 | SUCCESS  | Index loaded from storage.
+2026-03-23 14:35:08 | INFO     | 
+============================================================
+2026-03-23 14:35:08 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 14:35:08 | INFO     | ============================================================
+2026-03-23 14:35:08 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 14:35:08 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:35:08 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:35:08 | ERROR    | [grade_relevance] Parse error: Extra data: line 5 column 2 (char 192). Defaulting to relevant=True.
+2026-03-23 14:35:08 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:35:08 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:35:09 | ERROR    | [generate_answer] Failed: Extra data: line 10 column 2 (char 811)
+2026-03-23 14:35:09 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:35:13 | ERROR    | [audit_answer] Parse error: Extra data: line 5 column 2 (char 243)
+2026-03-23 14:35:13 | INFO     | 
+============================================================
+2026-03-23 14:35:13 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 14:35:13 | INFO     | ============================================================
+2026-03-23 14:35:13 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 14:35:13 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:35:13 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:35:30 | ERROR    | [grade_relevance] Parse error: Extra data: line 5 column 2 (char 172). Defaulting to relevant=True.
+2026-03-23 14:35:30 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:35:31 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:35:50 | ERROR    | [generate_answer] Failed: Extra data: line 12 column 2 (char 1376)
+2026-03-23 14:35:50 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:36:11 | ERROR    | [audit_answer] Parse error: Extra data: line 5 column 2 (char 197)
+2026-03-23 14:36:11 | INFO     | 
+============================================================
+2026-03-23 14:36:11 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 14:36:11 | INFO     | ============================================================
+2026-03-23 14:36:11 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 14:36:11 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:36:11 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:36:29 | ERROR    | [grade_relevance] Parse error: Extra data: line 5 column 2 (char 157). Defaulting to relevant=True.
+2026-03-23 14:36:29 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:36:29 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:36:48 | ERROR    | [generate_answer] Failed: Extra data: line 10 column 2 (char 444)
+2026-03-23 14:36:48 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:37:09 | ERROR    | [audit_answer] Parse error: Extra data: line 9 column 2 (char 355)
+2026-03-23 14:37:09 | INFO     | Weaviate connection closed.
+2026-03-23 14:40:18 | INFO     | Initialising retriever…
+2026-03-23 14:40:31 | SUCCESS  | Connected to Weaviate.
+2026-03-23 14:40:31 | SUCCESS  | Index loaded from storage.
+2026-03-23 14:40:33 | INFO     | 
+============================================================
+2026-03-23 14:40:33 | INFO     | Query: What is the waiting period for pre-existing diseases in HDFC Easy Health policy?
+2026-03-23 14:40:33 | INFO     | ============================================================
+2026-03-23 14:40:33 | INFO     | [retrieve] Query: 'What is the waiting period for pre-existing diseases in HDFC Easy Health policy?'
+2026-03-23 14:40:33 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:40:33 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:40:34 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses regarding waiting period for pre-existing diseases in HDFC Easy Health policy.
+2026-03-23 14:40:34 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:40:34 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:40:35 | INFO     | [generate_answer] Decision=informational | Confidence=50%
+2026-03-23 14:40:35 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:40:40 | INFO     | [audit_answer] Score=80/100 | Flags=1
+2026-03-23 14:40:40 | INFO     | 
+============================================================
+2026-03-23 14:40:40 | INFO     | Query: What are the major exclusions under HDFC Life Cardiac Care policy?
+2026-03-23 14:40:40 | INFO     | ============================================================
+2026-03-23 14:40:40 | INFO     | [retrieve] Query: 'What are the major exclusions under HDFC Life Cardiac Care policy?'
+2026-03-23 14:40:40 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:40:40 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:40:58 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses related to exclusions under HDFC Life Cardiac Care policy.
+2026-03-23 14:40:58 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:40:58 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:41:17 | INFO     | [generate_answer] Decision=informational | Confidence=100%
+2026-03-23 14:41:17 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:41:40 | INFO     | [audit_answer] Score=95/100 | Flags=1
+2026-03-23 14:41:40 | INFO     | 
+============================================================
+2026-03-23 14:41:40 | INFO     | Query: Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?
+2026-03-23 14:41:40 | INFO     | ============================================================
+2026-03-23 14:41:40 | INFO     | [retrieve] Query: 'Is cancer treatment covered under HDFC Life Cancer Care plan and what is the sum insured?'
+2026-03-23 14:41:40 | INFO     | [retrieve] Got 5 chunks. Top score: 1.0
+2026-03-23 14:41:40 | INFO     | [grade_relevance] Grading retrieved chunks…
+2026-03-23 14:41:58 | INFO     | [grade_relevance] Score=9 | Relevant=True | Chunks directly answer the query with specific policy clauses regarding cancer treatment and sum insured.
+2026-03-23 14:41:58 | INFO     | [router] Chunks relevant → generate_answer
+2026-03-23 14:41:58 | INFO     | [generate_answer] Generating structured answer…
+2026-03-23 14:42:17 | INFO     | [generate_answer] Decision=approve | Confidence=100%
+2026-03-23 14:42:17 | INFO     | [audit_answer] Auditing generated answer…
+2026-03-23 14:42:38 | INFO     | [audit_answer] Score=80/100 | Flags=3
+2026-03-23 14:42:38 | INFO     | Weaviate connection closed.
