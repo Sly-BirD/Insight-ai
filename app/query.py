@@ -43,9 +43,16 @@ load_dotenv()
 
 WEAVIATE_HOST       = "localhost"
 WEAVIATE_PORT       = 8080
-WEAVIATE_INDEX_NAME = "InsurancePolicies"
+WEAVIATE_INDEX_BASE = "InsurancePolicies"
 EMBED_MODEL_NAME    = "BAAI/bge-base-en-v1.5"
 PERSIST_DIR         = str(Path(__file__).parent.parent / "storage")
+
+import hashlib
+
+def collection_name_for_user(user_id: str) -> str:
+    """Derive a stable per-user Weaviate collection name."""
+    h = hashlib.sha256(user_id.encode()).hexdigest()[:16]
+    return f"{WEAVIATE_INDEX_BASE}_{h}"
 
 TOP_K           = 7    # ↑ more chunks = richer context for the LLM
 MAX_REWRITES    = 2
@@ -120,7 +127,7 @@ def init_retriever() -> VectorIndexRetriever:
     logger.success("Connected to Weaviate.")
     vector_store = WeaviateVectorStore(
         weaviate_client=_weaviate_client,
-        index_name=WEAVIATE_INDEX_NAME,
+        index_name=WEAVIATE_INDEX_BASE,
         text_key="content",
     )
     storage_context = StorageContext.from_defaults(
@@ -524,23 +531,67 @@ def build_graph():
 # Public API
 # ---------------------------------------------------------------------------
 
-def run_query(user_query: str) -> dict[str, Any]:
+def get_user_retriever(user_id: str) -> VectorIndexRetriever:
+    """Build a retriever scoped to a specific user's Weaviate collection (Silo Pattern)."""
+    col_name = collection_name_for_user(user_id)
+    logger.info(f"[query] Using collection: {col_name} for user {user_id[:8]}…")
+    try:
+        if not _weaviate_client.collections.exists(col_name):
+            raise ValueError(f"No documents indexed yet. Upload PDFs first.")
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(f"User has no indexed documents: {exc}")
+    vector_store = WeaviateVectorStore(
+        weaviate_client=_weaviate_client,
+        index_name=col_name,
+        text_key="content",
+    )
+    storage_context = StorageContext.from_defaults(
+        vector_store=vector_store,
+        persist_dir=PERSIST_DIR,
+    )
+    index = load_index_from_storage(storage_context)
+    return VectorIndexRetriever(index=index, similarity_top_k=TOP_K)
+
+
+def run_query(user_query: str, user_id: str = "shared") -> dict[str, Any]:
+    """Run RAG pipeline scoped to a user's document collection."""
+    global _retriever
+    if user_id == "shared":
+        retriever = _retriever
+    else:
+        try:
+            retriever = get_user_retriever(user_id)
+        except ValueError as exc:
+            return {
+                "query": user_query,
+                "answer": {
+                    "decision": "informational",
+                    "justification": str(exc),
+                    "clauses": [], "confidence": 0,
+                    "conditions": [],
+                    "summary": "No documents indexed for your account yet.",
+                },
+                "audit": {"score": 0, "flags": ["No documents indexed"], "summary": "Cannot audit."},
+                "retrieval_info": {"chunks_used": 0, "rewrites_done": 0, "final_query": user_query},
+                "error": str(exc),
+            }
     initial_state: RAGState = {
-        "query":            user_query,
-        "current_query":    user_query,
-        "rewrite_count":    0,
-        "retrieved_chunks": [],
-        "relevance":        None,
-        "answer":           None,
-        "raw_answer_text":  "",
-        "audit":            None,
-        "final_response":   None,
-        "error":            None,
+        "query": user_query, "current_query": user_query,
+        "rewrite_count": 0, "retrieved_chunks": [],
+        "relevance": None, "answer": None, "raw_answer_text": "",
+        "audit": None, "final_response": None, "error": None,
     }
     logger.info(f"\n{'='*60}\nQuery: {user_query}\n{'='*60}")
-    graph  = build_graph()
-    result = graph.invoke(initial_state)
-    return result.get("final_response", {"error": "Pipeline returned no response."})
+    original = _retriever
+    _retriever = retriever
+    try:
+        graph = build_graph()
+        result = graph.invoke(initial_state)
+        return result.get("final_response", {"error": "Pipeline returned no response."})
+    finally:
+        _retriever = original
 
 
 # ---------------------------------------------------------------------------
