@@ -20,9 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-import httpx
-import jwt as pyjwt
-from jwt.algorithms import RSAAlgorithm
+
 import weaviate
 import uvicorn
 from dotenv import load_dotenv
@@ -36,10 +34,12 @@ try:
     from ingest import ingest_docs
     import query as query_module
     from compare import compare_policies, CompareResponse as ComparePydantic
+    import database as db
 except ImportError:
     from app.ingest import ingest_docs
     import app.query as query_module
     from app.compare import compare_policies, CompareResponse as ComparePydantic
+    import app.database as db
 
 load_dotenv()
 
@@ -66,77 +66,78 @@ WEAVIATE_PORT  = 8080
 WEAVIATE_INDEX = "InsurancePolicies"
 
 # ---------------------------------------------------------------------------
-# Clerk JWT verification
+# Clerk JWT verification (Step 9) — local JWKS-based verification
 # ---------------------------------------------------------------------------
-# Clerk session tokens are RS256-signed JWTs. The correct approach is to
-# fetch Clerk's public JWKS and verify locally — NOT to call a Clerk API
-# endpoint (which doesn't exist for session tokens).
-# ---------------------------------------------------------------------------
+
+import jwt as pyjwt
+from jwt import PyJWKClient
 
 _http_bearer = HTTPBearer(auto_error=False)
 
-# In-memory JWKS cache so we don't fetch on every request
-_jwks_cache: dict = {}
+# Cache the JWKS client — it internally caches the public keys
+_jwks_client: Optional[PyJWKClient] = None
 
 
-async def _get_clerk_public_key(kid: str) -> Any:
+def _get_jwks_client() -> Optional[PyJWKClient]:
     """
-    Fetch Clerk's JWKS and return the RSA public key matching the given kid.
-    Results are cached per kid so the JWKS URL is only hit once per key rotation.
+    Lazily build a PyJWKClient that fetches Clerk's public keys.
+    Uses Clerk's Backend API JWKS endpoint.
     """
-    global _jwks_cache
-    if kid in _jwks_cache:
-        return _jwks_cache[kid]
+    global _jwks_client
+    if _jwks_client is not None:
+        return _jwks_client
 
-    # Derive the JWKS URL from the publishable key's domain.
-    # pk_test_<base64(frontend-api-host)> → decode to get hostname.
-    publishable_key = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
-    if publishable_key:
+    secret_key = os.environ.get("CLERK_SECRET_KEY", "")
+    if not secret_key:
+        return None
+
+    # Clerk exposes JWKS at this endpoint (needs secret key auth)
+    # But the Frontend API also exposes it publicly via:
+    #   https://<frontend-api>/.well-known/jwks.json
+    # We use the publishable key to derive the Frontend API URL.
+    pk = os.environ.get("CLERK_PUBLISHABLE_KEY", "")
+    if pk:
+        # Publishable key format: pk_test_<base64-encoded-frontend-api>
+        # Decode to get the Frontend API domain
+        import base64
         try:
-            # pk_test_ or pk_live_ prefix: strip it, base64-decode the rest
-            b64 = publishable_key.split("_", 2)[-1]
-            # Add padding so base64 decoding doesn't fail
-            b64 += "=" * (-len(b64) % 4)
-            import base64 as _b64
-            # Clerk appends a trailing '$' to the decoded host — strip it
-            frontend_api = _b64.b64decode(b64).decode("utf-8").rstrip("$\x00")
+            # Remove the pk_test_ or pk_live_ prefix
+            encoded_part = pk.split("_", 2)[-1]
+            # Add padding if needed
+            padded = encoded_part + "=" * (4 - len(encoded_part) % 4)
+            frontend_api = base64.b64decode(padded).decode().rstrip("$")
             jwks_url = f"https://{frontend_api}/.well-known/jwks.json"
+            logger.info(f"[auth] Using JWKS URL: {jwks_url}")
         except Exception:
-            jwks_url = "https://clerk.accounts.dev/.well-known/jwks.json"
+            # Fallback to Backend API JWKS
+            jwks_url = "https://api.clerk.com/v1/jwks"
+            logger.info(f"[auth] Fallback JWKS URL: {jwks_url}")
     else:
-        # Fallback: derive from secret key domain
-        jwks_url = "https://clerk.accounts.dev/.well-known/jwks.json"
+        jwks_url = "https://api.clerk.com/v1/jwks"
 
-    logger.debug(f"[auth] Fetching JWKS from {jwks_url}")
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(jwks_url, timeout=5.0)
-        resp.raise_for_status()
-        jwks = resp.json()
-
-    for key_data in jwks.get("keys", []):
-        if key_data.get("kid") == kid:
-            public_key = RSAAlgorithm.from_jwk(key_data)
-            _jwks_cache[kid] = public_key
-            return public_key
-
-    raise ValueError(f"No JWKS key found for kid={kid!r}")
+    _jwks_client = PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
+    return _jwks_client
 
 
 async def require_auth(
     credentials: HTTPAuthorizationCredentials = Security(_http_bearer),
 ) -> dict:
     """
-    FastAPI dependency that verifies a Clerk session JWT.
-    - Extracts the Bearer token from the Authorization header
-    - Fetches Clerk's JWKS public key (cached after first fetch)
-    - Verifies the RS256 signature and expiry locally via PyJWT
-    - Returns the decoded claims dict on success
+    FastAPI dependency that verifies a Clerk JWT token locally.
+    Uses RS256 signature verification with Clerk's JWKS public keys.
+
+    How it works:
+      1. Extracts the Bearer token from the Authorization header
+      2. Fetches Clerk's public key from JWKS (cached)
+      3. Verifies JWT signature + expiry locally with PyJWT
+      4. Returns the decoded claims dict on success
 
     The frontend sends the token via:
       headers: { Authorization: `Bearer ${await getToken()}` }
     """
     secret_key = os.environ.get("CLERK_SECRET_KEY", "")
     if not secret_key:
+        # Auth not configured — allow through in dev mode
         logger.warning("[auth] CLERK_SECRET_KEY not set — skipping auth check")
         return {"sub": "dev"}
 
@@ -146,32 +147,37 @@ async def require_auth(
     token = credentials.credentials
 
     try:
-        # Decode header only (no verification) to get the key id
-        unverified_header = pyjwt.get_unverified_header(token)
-        kid = unverified_header.get("kid")
-        if not kid:
-            raise HTTPException(status_code=401, detail="JWT is missing kid header.")
+        jwks_client = _get_jwks_client()
+        if not jwks_client:
+            logger.warning("[auth] JWKS client not available — skipping auth")
+            return {"sub": "dev"}
 
-        # Get the matching RSA public key from Clerk's JWKS
-        public_key = await _get_clerk_public_key(kid)
+        # Get the signing key from JWKS that matches the token's kid
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
 
-        # Verify signature, expiry, and audience
+        # Verify and decode the JWT
         claims = pyjwt.decode(
             token,
-            public_key,
+            signing_key.key,
             algorithms=["RS256"],
-            options={"verify_aud": False},   # Clerk tokens have no aud by default
+            options={
+                "verify_exp": True,
+                "verify_nbf": True,
+                "verify_aud": False,  # Clerk tokens don't always have aud
+            },
         )
-        logger.debug(f"[auth] Verified token for sub={claims.get('sub')}")
+
+        logger.debug(f"[auth] Token verified for user {claims.get('sub', '?')[:8]}…")
         return claims
 
+    except pyjwt.ExpiredSignatureError:
+        logger.warning("[auth] Token has expired")
+        raise HTTPException(status_code=401, detail="Session token has expired. Please sign in again.")
+    except pyjwt.InvalidTokenError as exc:
+        logger.warning(f"[auth] Invalid token: {exc}")
+        raise HTTPException(status_code=401, detail="Invalid session token.")
     except HTTPException:
         raise
-    except pyjwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Session token has expired.")
-    except pyjwt.InvalidTokenError as exc:
-        logger.warning(f"[auth] Invalid JWT: {exc}")
-        raise HTTPException(status_code=401, detail="Invalid session token.")
     except Exception as exc:
         logger.error(f"[auth] Token verification error: {exc}")
         raise HTTPException(status_code=401, detail="Authentication error.")
@@ -206,19 +212,21 @@ def _log_query(question: str, answer: dict, audit: dict, duration: float) -> Non
 # Weaviate node-count helper
 # ---------------------------------------------------------------------------
 
-def _get_node_count() -> int:
+def _get_node_count(collection_name: str = None) -> int:
+    """Count nodes in a Weaviate collection. Uses per-user collection if provided."""
+    col = collection_name or WEAVIATE_INDEX
     try:
         client = weaviate.connect_to_local(host=WEAVIATE_HOST, port=WEAVIATE_PORT)
         try:
-            if not client.collections.exists(WEAVIATE_INDEX):
+            if not client.collections.exists(col):
                 return 0
-            collection = client.collections.get(WEAVIATE_INDEX)
+            collection = client.collections.get(col)
             result = collection.aggregate.over_all(total_count=True)
             return result.total_count or 0
         finally:
             client.close()
     except Exception as exc:
-        logger.warning(f"[status] Could not count nodes: {exc}")
+        logger.warning(f"[status] Could not count nodes in {col}: {exc}")
         return 0
 
 # ---------------------------------------------------------------------------
@@ -443,32 +451,59 @@ async def health_check():
 
 @app.get("/status", response_model=StatusResponse, tags=["System"],
          summary="Index status — node count and has_documents flag")
-async def index_status():
-    """Tells the frontend whether there are indexed documents."""
-    logger.debug("GET /status")
-    count = _get_node_count()
-    return StatusResponse(has_documents=count > 0, node_count=count, index_name=WEAVIATE_INDEX)
+async def index_status(user_id: str = None):
+    """
+    Tells the frontend whether there are indexed documents.
+    Pass ?user_id=<clerk_id> to check a specific user's collection (Silo Pattern).
+    """
+    logger.debug(f"GET /status user_id={user_id[:8] + '...' if user_id else 'shared'}")
+    if user_id:
+        try:
+            import hashlib
+            h = hashlib.sha256(user_id.encode()).hexdigest()[:16]
+            col = f"InsurancePolicies_{h}"
+        except Exception:
+            col = WEAVIATE_INDEX
+    else:
+        col = WEAVIATE_INDEX
+    count = _get_node_count(col)
+    return StatusResponse(has_documents=count > 0, node_count=count, index_name=col)
+
+
+def _get_user_id(claims: dict) -> str:
+    """Extract Clerk user_id from verified JWT claims."""
+    return claims.get("sub", "shared")
 
 
 @app.get(
     "/analytics",
-    response_model=AnalyticsResponse,
     tags=["Analytics"],
     summary="Aggregated query statistics for Dashboard and Audit pages",
 )
 async def analytics(_claims: dict = Depends(require_auth)):
     """
-    Step 7: Returns aggregated stats built from the in-memory query log.
+    Returns aggregated stats + recent query history.
 
     Used by:
       - Dashboard: total_queries, decisions breakdown, avg scores, daily_counts chart
       - Audit page: recent_queries list (newest first)
 
-    Note: log resets on server restart. A persistent DB will be added
-    in a future step (Step 10 — encrypted query history).
+    Data source priority: Supabase (persistent) → in-memory log (fallback).
     """
     logger.debug("GET /analytics")
+    user_id = _get_user_id(_claims)
+
+    # Try Supabase first (persistent across restarts)
+    db_analytics = db.get_user_analytics(user_id)
+    if db_analytics.get("total_queries", 0) > 0:
+        # Fetch recent queries from Supabase (decrypted) for the Audit page
+        recent = db.get_user_queries(user_id, limit=50)
+        db_analytics["recent_queries"] = recent
+        return db_analytics
+
+    # Fallback to in-memory log (only has data from current server session)
     return _build_analytics()
+
 
 
 @app.post("/ingest", response_model=IngestResponse, tags=["Ingestion"],
@@ -506,8 +541,12 @@ async def ingest_endpoint(files: list[UploadFile] = File(...), _claims: dict = D
     nodes_created: Optional[int] = None
     processed: int = 0
 
+    # Capture filenames before cleanup deletes the paths
+    saved_filenames = [p.name for p in saved_paths]
+
     try:
-        result        = ingest_docs(str(TEMP_DIR))
+        user_id       = _get_user_id(_claims)
+        result        = ingest_docs(str(TEMP_DIR), user_id=user_id)
         nodes_created = result.get("nodes", 0)
         processed     = result.get("documents", len(saved_paths))
         logger.success(f"Ingestion complete — {processed} doc(s), {nodes_created} nodes")
@@ -518,10 +557,21 @@ async def ingest_endpoint(files: list[UploadFile] = File(...), _claims: dict = D
     finally:
         _cleanup_temp(saved_paths)
 
+    duration = round(time.perf_counter() - start, 2)
+
+    # Step 10: persist ingest event to Supabase (encrypted filenames)
+    db.save_ingest(
+        user_id=user_id,
+        files_count=processed,
+        nodes_created=nodes_created or 0,
+        duration_s=duration,
+        filenames=saved_filenames,
+    )
+
     return IngestResponse(
         status="success", processed=processed, errors=errors,
         nodes_created=nodes_created,
-        duration_seconds=round(time.perf_counter() - start, 2),
+        duration_seconds=duration,
     )
 
 
@@ -547,7 +597,8 @@ async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_
     start = time.perf_counter()
 
     try:
-        raw = query_module.run_query(q)
+        user_id = _get_user_id(_claims)
+        raw = query_module.run_query(q, user_id=user_id)
     except Exception as exc:
         logger.error(f"Query pipeline error: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
@@ -557,8 +608,20 @@ async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_
     aud      = raw.get("audit", {})
     info     = raw.get("retrieval_info", {})
 
-    # Step 7: log for analytics
+    # Step 7: log for analytics (in-memory)
     _log_query(question=q, answer=ans, audit=aud, duration=duration)
+    # Step 10: persist to Supabase (encrypted)
+    db.save_query(
+        user_id=user_id,
+        question=q,
+        decision=ans.get("decision", "informational"),
+        confidence=ans.get("confidence", 0),
+        audit_score=aud.get("score", 0),
+        duration_s=duration,
+        justification=ans.get("justification", ""),
+        summary=ans.get("summary", ""),
+        clauses_count=len(ans.get("clauses", [])),
+    )
 
     logger.info(
         f"  → decision={ans.get('decision')} | confidence={ans.get('confidence')} | "
@@ -577,6 +640,25 @@ async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_
     except Exception as exc:
         logger.warning(f"Response schema error: {exc}")
         raise HTTPException(status_code=500, detail=f"Pipeline returned unexpected structure: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# History endpoint
+# ---------------------------------------------------------------------------
+
+@app.get(
+    "/history",
+    tags=["Analytics"],
+    summary="Fetch decrypted query history for the authenticated user",
+)
+async def history_endpoint(limit: int = 50, _claims: dict = Depends(require_auth)):
+    """
+    Step 10: Return the authenticated user's query history.
+    Sensitive fields are decrypted server-side before returning.
+    """
+    user_id = _get_user_id(_claims)
+    rows = db.get_user_queries(user_id, limit=min(limit, 200))
+    return {"queries": rows, "count": len(rows)}
 
 
 # ---------------------------------------------------------------------------
