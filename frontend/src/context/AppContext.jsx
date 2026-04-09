@@ -1,23 +1,10 @@
 /**
  * src/context/AppContext.jsx
  * ─────────────────────────────────────────────────────────────
- * Global app state for InsightAI.
- *
- * What lives here:
- *   dark / setDark          — theme toggle
- *   activeSection / setSection — navigation
- *   apiOnline               — live health-poll result
- *   hasDocuments            — true if Weaviate has ≥1 indexed node
- *   recentQueries / addQuery — query history for Audit page
- *
- *   ── Upload state (Step 4) ──────────────────────────────────
- *   uploadFiles             — file list with progress/status
- *   setUploadFiles
- *   uploadResult            — last ingest API response
- *   setUploadResult
- *   isUploading             — true while ingest is in flight
- *   setIsUploading
- *   These live here so UploadPanel state survives page switches.
+ * Step 10: Updated with:
+ *   - useAuth() reset on user change (session leakage fix)
+ *   - Per-user /status check using Clerk userId
+ *   - getToken passed through context for API calls
  */
 
 import {
@@ -32,7 +19,6 @@ import { useAuth } from "@clerk/clerk-react";
 
 const API_BASE = "http://localhost:8000";
 
-// ─── context ──────────────────────────────────────────────────
 export const AppContext = createContext(null);
 
 export function useApp() {
@@ -41,8 +27,12 @@ export function useApp() {
   return ctx;
 }
 
-// ─── provider ─────────────────────────────────────────────────
 export function AppProvider({ children }) {
+
+  // ── Clerk auth ───────────────────────────────────────────
+  // useAuth is safe here because AppProvider is rendered inside
+  // ClerkProvider in main.jsx
+  const { userId, getToken, isSignedIn } = useAuth();
 
   // ── Theme ────────────────────────────────────────────────
   const [dark, setDark] = useState(true);
@@ -55,7 +45,7 @@ export function AppProvider({ children }) {
   }, []);
 
   // ── API health ───────────────────────────────────────────
-  const [apiOnline, setApiOnline] = useState(null); // null=checking
+  const [apiOnline, setApiOnline] = useState(null);
   const pollRef = useRef(null);
 
   useEffect(() => {
@@ -73,112 +63,111 @@ export function AppProvider({ children }) {
     return () => { active = false; clearInterval(pollRef.current); };
   }, []);
 
-  // ── Document index guard (Step 5) ────────────────────────
-  // Checks whether Weaviate actually has indexed nodes.
-  // Polled once at startup and again after every successful ingest.
-  const [hasDocuments, setHasDocuments] = useState(null); // null=unknown
+  // ── Document index guard — per-user (Step 5 + Step 10) ───
+  const [hasDocuments,  setHasDocuments]  = useState(null);
   const [documentCount, setDocumentCount] = useState(0);
-  const checkDocumentsRef = useRef(null);
 
   const checkDocuments = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/status`, { signal: AbortSignal.timeout(5000) });
+      // Pass userId so backend checks this user's collection (Silo Pattern)
+      const url = userId
+        ? `${API_BASE}/status?user_id=${encodeURIComponent(userId)}`
+        : `${API_BASE}/status`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) { setHasDocuments(false); setDocumentCount(0); return; }
       const data = await res.json();
       const count = data?.node_count ?? 0;
       setDocumentCount(count);
       setHasDocuments(count > 0);
     } catch {
-      // If /status fails, don't block the user — default to allowing queries
-      // but we won't set hasDocuments to true either.
       setHasDocuments(null);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     checkDocuments();
   }, [checkDocuments]);
-  const { userId } = useAuth();
+
+  // ── Session leakage fix (Step 10) ────────────────────────
+  // Reset ALL per-session state when the user changes.
+  // This prevents user B from seeing user A's upload state or
+  // inheriting hasDocuments=true from user A's session.
   useEffect(() => {
     setHasDocuments(false);
     setDocumentCount(0);
     setUploadFiles([]);
     setUploadResult(null);
-  }, [userId]);
+    setIsUploading(false);
+    setRecentQueries([]);
+    // Re-check this user's actual documents after reset
+    if (userId) {
+      // Small delay to let Clerk finish the auth transition
+      const t = setTimeout(checkDocuments, 500);
+      return () => clearTimeout(t);
+    }
+  }, [userId]); // fires on login, logout, and account switch
 
   // ── Upload state (Step 4) — survives page switches ───────
-  // These are the source-of-truth for UploadPanel.
-  // The component reads/writes these instead of local useState.
-  const [uploadFiles, setUploadFiles] = useState([]); // {file,name,size,progress,status}
+  const [uploadFiles,  setUploadFiles]  = useState([]);
   const [uploadResult, setUploadResult] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading,  setIsUploading]  = useState(false);
 
-  /**
-   * Called by UploadPanel after a successful ingest.
-   * Re-checks Weaviate node count so hasDocuments updates immediately.
-   */
   const onIngestSuccess = useCallback((result) => {
     setUploadResult(result);
     if ((result?.processed ?? 0) > 0) {
-      // Optimistically flag docs as available, then confirm via API
       setHasDocuments(true);
-      checkDocuments();
+      checkDocuments(); // confirm with backend
     }
   }, [checkDocuments]);
 
-  // ── Query history (for Audit page) ───────────────────────
+  // ── Query history ─────────────────────────────────────────
   const [recentQueries, setRecentQueries] = useState([]);
 
   const addQuery = useCallback((question, apiResponse) => {
     setRecentQueries((prev) => [
       {
-        id: String(Date.now()),
+        id:            String(Date.now()),
         question,
-        decision: apiResponse?.answer?.decision ?? "informational",
-        confidence: apiResponse?.answer?.confidence ?? 0,
-        auditScore: apiResponse?.audit?.score ?? 0,
-        timestamp: new Date().toISOString(),
-        clauses: apiResponse?.answer?.clauses ?? [],
+        decision:      apiResponse?.answer?.decision      ?? "informational",
+        confidence:    apiResponse?.answer?.confidence    ?? 0,
+        auditScore:    apiResponse?.audit?.score          ?? 0,
+        timestamp:     new Date().toISOString(),
+        clauses:       apiResponse?.answer?.clauses       ?? [],
         justification: apiResponse?.answer?.justification ?? "",
+        summary:       apiResponse?.answer?.summary       ?? "",
+        duration_s:    apiResponse?.retrieval_info?.duration_s ?? 0,
       },
       ...prev.slice(0, 49),
     ]);
   }, []);
 
-  // ── Derived ───────────────────────────────────────────────
   const notifications = recentQueries.length;
 
   // ── Context value ─────────────────────────────────────────
   const value = {
     // theme
-    dark,
-    setDark,
+    dark, setDark,
 
     // navigation
-    activeSection,
-    setSection,
+    activeSection, setSection,
+
+    // auth (pass getToken so pages can authenticate API calls)
+    userId, getToken, isSignedIn,
 
     // api health
     apiOnline,
 
-    // document index status
-    hasDocuments,       // boolean | null
-    documentCount,      // number of indexed nodes
-    checkDocuments,     // call this to re-check manually
+    // document index
+    hasDocuments, documentCount, checkDocuments,
 
-    // upload state (global — survives page switches)
-    uploadFiles,
-    setUploadFiles,
-    uploadResult,
-    setUploadResult,
-    isUploading,
-    setIsUploading,
-    onIngestSuccess,    // call this instead of setUploadResult directly
+    // upload state
+    uploadFiles, setUploadFiles,
+    uploadResult, setUploadResult,
+    isUploading, setIsUploading,
+    onIngestSuccess,
 
     // query history
-    recentQueries,
-    addQuery,
-    notifications,
+    recentQueries, addQuery, notifications,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

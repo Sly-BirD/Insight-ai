@@ -51,14 +51,19 @@ CHUNK_SIZE          = 512      # tokens — smaller = more precise clause retrie
 CHUNK_OVERLAP       = 128      # ~25% overlap to preserve cross-sentence context
 WEAVIATE_HOST       = "localhost"
 WEAVIATE_PORT       = 8080
-WEAVIATE_INDEX_NAME = "InsurancePolicies"
-# PERSIST_DIR         = "./storage"
-from pathlib import Path
-PERSIST_DIR = str(Path(__file__).parent.parent / "storage")
+WEAVIATE_INDEX_BASE = "InsurancePolicies"  # per-user: InsurancePolicies_<hash>
+PERSIST_DIR         = "./storage"
 
 # Unstructured strategy:
 #   "hi_res"  — layout model + OCR; best for scanned/tabular PDFs (slower)
 #   "auto"    — auto-detects; use if hi_res is too slow on your machine
+import hashlib as _hashlib
+
+def collection_name_for_user(user_id: str) -> str:
+    """Derive stable per-user Weaviate collection name (mirrors query.py)."""
+    h = _hashlib.sha256(user_id.encode()).hexdigest()[:16]
+    return f"{WEAVIATE_INDEX_BASE}_{h}"
+
 UNSTRUCTURED_STRATEGY = "hi_res"
 
 # ---------------------------------------------------------------------------
@@ -319,19 +324,19 @@ def connect_weaviate() -> weaviate.WeaviateClient:
         raise
 
 
-def delete_existing_index(client: weaviate.WeaviateClient) -> None:
+def delete_existing_index(client: weaviate.WeaviateClient, col_name: str = None) -> None:
     """
     Delete existing Weaviate collection to start fresh.
     Safely skips if the collection doesn't exist.
     """
+    if col_name is None:
+        col_name = WEAVIATE_INDEX_BASE
     try:
-        if client.collections.exists(WEAVIATE_INDEX_NAME):
-            client.collections.delete(WEAVIATE_INDEX_NAME)
-            logger.success(f"Deleted existing collection '{WEAVIATE_INDEX_NAME}'.")
+        if client.collections.exists(col_name):
+            client.collections.delete(col_name)
+            logger.success(f"Deleted existing collection '{col_name}'.")
         else:
-            logger.info(
-                f"Collection '{WEAVIATE_INDEX_NAME}' not found — skipping delete."
-            )
+            logger.info(f"Collection '{col_name}' not found — skipping delete.")
     except Exception as exc:
         logger.warning(f"Could not delete collection: {exc} — continuing anyway.")
 
@@ -362,7 +367,7 @@ def print_sample_nodes(nodes: list[TextNode], n: int = 3) -> None:
 # Main Ingestion Function
 # ---------------------------------------------------------------------------
 
-def ingest_docs(data_dir: str = "data/") -> dict:
+def ingest_docs(data_dir: str = "data/", user_id: str = "shared") -> dict:
     """
     Full v2 ingestion pipeline:
       1. Configure embedding model
@@ -417,14 +422,18 @@ def ingest_docs(data_dir: str = "data/") -> dict:
     weaviate_client = connect_weaviate()
 
     try:
-        delete_existing_index(weaviate_client)
+        col_name = collection_name_for_user(user_id) if user_id != "shared" else WEAVIATE_INDEX_BASE
+        delete_existing_index(weaviate_client, col_name)
 
         # ------------------------------------------------------------------
         # Step 6: Create vector store and index nodes
         # ------------------------------------------------------------------
+        # Per-user silo: each user gets their own Weaviate collection
+        col_name = collection_name_for_user(user_id) if user_id != "shared" else WEAVIATE_INDEX_BASE
+        logger.info(f"Using collection: {col_name} for user {user_id[:8]}…")
         vector_store = WeaviateVectorStore(
             weaviate_client=weaviate_client,
-            index_name=WEAVIATE_INDEX_NAME,
+            index_name=col_name,
             text_key="content",
         )
 
@@ -462,7 +471,7 @@ def ingest_docs(data_dir: str = "data/") -> dict:
     logger.info(f"  Nodes indexed    : {summary['nodes']}")
     logger.info(f"  Chunk size       : {CHUNK_SIZE} tokens")
     logger.info(f"  Chunk overlap    : {CHUNK_OVERLAP} tokens")
-    logger.info(f"  Weaviate class   : {WEAVIATE_INDEX_NAME}")
+    logger.info(f"  Weaviate class   : {col_name}")
     logger.info(f"  Persisted to     : {PERSIST_DIR}/")
     logger.info("=" * 60)
 
@@ -500,5 +509,5 @@ if __name__ == "__main__":
         print("\n⚠  No nodes created. Check logs/ingest.log for details.")
         sys.exit(1)
     else:
-        print(f"\n✓ Index ready. Query with Weaviate class '{WEAVIATE_INDEX_NAME}'.")
+        print(f"\n✓ Index ready. Query with Weaviate class '{col_name}'.")
         sys.exit(0)
