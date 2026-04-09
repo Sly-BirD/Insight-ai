@@ -4,9 +4,9 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform, Layou
 
 import WorkspaceModule from "./pages/Workspace.jsx";
 import DashboardModule from "./pages/Dashboard.jsx";
-import AuditModule     from "./pages/Audit.jsx";
+import AuditModule from "./pages/Audit.jsx";
 import CompareModule from "./pages/Compare.jsx";
-import AuthGuard  from "./components/AuthGuard.jsx";
+import AuthGuard from "./components/AuthGuard.jsx";
 import UserButton from "./components/UserButton.jsx";
 
 
@@ -53,25 +53,25 @@ import { AppContext, AppProvider, useApp } from "./context/AppContext.jsx";
 const SECTIONS = ["home", "dashboard", "upload", "query", "compare", "audit"];
 
 const BENTO_CARDS = [
-  { id: "dashboard", label: "Dashboard", icon: "◈", desc: "At-a-glance analytics, approval rates, and trend charts.", size: "large", accent: "#8B8FA8" },
-  { id: "workspace", label: "Workspace", icon: "⌖", desc: "Upload policy documents and query them — all in one place.", size: "large", accent: "#9CA3AF" },
-  { id: "compare",   label: "Compare",   icon: "⇄", desc: "Side-by-side tabular diff across policy versions.",      size: "small",  accent: "#6B7280" },
-  { id: "audit",     label: "Audit Log", icon: "≡", desc: "Searchable, high-density activity and decision log.",    size: "small",  accent: "#9CA3AF" },
+  { id: "dashboard", label: "Dashboard", icon: "◈", desc: "View your insurance trends and approval rates at a glance", size: "large", accent: "#8B8FA8" },
+  { id: "workspace", label: "Workspace", icon: "⌖", desc: "Upload policies and ask questions — all in one place.", size: "large", accent: "#9CA3AF" },
+  { id: "compare", label: "Compare", icon: "⇄", desc: "See exactly what changed between two policy versions", size: "small", accent: "#6B7280" },
+  { id: "audit", label: "Audit Log", icon: "≡", desc: "A secure log of all your previous searches and uploads.", size: "small", accent: "#9CA3AF" },
 ];
 
 const WALKTHROUGH_STEPS = [
-  { num: "01", title: "Upload Your Policy Documents",   body: "Drag one or more insurance policy PDFs into the Upload zone. InsightAI parses clauses, exclusions, and riders in seconds.", tag: "Ingestion" },
-  { num: "02", title: "Run a Natural-Language Query",   body: "Type a plain-English question — 'What is the waiting period for pre-existing diseases?' — and the Query engine returns a structured Decision Card with justifications drawn directly from the document.", tag: "Analysis" },
-  { num: "03", title: "Compare Policy Versions",        body: "Select two documents and switch to Compare view. A tabular diff highlights additions, removals, and changed clauses row-by-row.", tag: "Comparison" },
-  { num: "04", title: "Review the Audit Log",           body: "Every query, decision, and upload is timestamped and stored in the Audit Log. Filter by user, date range, or decision outcome.", tag: "Compliance" },
+  { num: "01", title: "Upload Your Policies", body: "Drag your insurance PDFs here. We’ll read through the fine print for you in seconds.", tag: "Step 1" },
+  { num: "02", title: "Ask Anything", body: "Type a question like 'Is dental covered?' to get an instant answer backed by your document.", tag: "Step 2" },
+  { num: "03", title: "Spot Differences", body: "Compare two plans side-by-side to see new benefits or hidden removals.", tag: "Step 3" },
+  { num: "04", title: "Keep Track", body: "Every answer we provide is saved in your history so you can review it anytime.", tag: "Step 4" },
 ];
 
 // ─── SHADER / FLUID BACKGROUND ───────────────────────────────────────────────
 function FluidShader({ dark }) {
   const canvasRef = useRef(null);
-  const animRef   = useRef(null);
-  const timeRef   = useRef(0);
-  const frameRef  = useRef(0); // ✅ frame skipping
+  const animRef = useRef(null);
+  const timeRef = useRef(0);
+  const frameRef = useRef(0); // ✅ frame skipping
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -137,12 +137,12 @@ function FluidShader({ dark }) {
 
           // Colors
           const hue = (nx * 360 + t * 60 + wave * 40) % 360;
-          
+
           const sat = dark
             ? 65 + Math.abs(wave) * 25
             : 75 + Math.abs(wave) * 20;
 
-          const lum = dark 
+          const lum = dark
             ? 35 + wave * 8
             : 50 + wave * 6;
 
@@ -242,11 +242,49 @@ function TitleBar({ dark, setDark, activeSection, setSection, notifications }) {
         borderBottom: dark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.07)",
       }}
     >
-      <button onClick={() => setSection("home")} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+      {/* <button onClick={() => setSection("home")} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
         <div style={{ width: 28, height: 28, borderRadius: 7, background: dark ? "#1a1a2e" : "#1e293b", display: "flex", alignItems: "center", justifyContent: "center", border: dark ? "1px solid rgba(255,255,255,0.12)" : "none" }}>
           <span style={{ color: "#94a3b8", fontSize: 13, fontWeight: 700 }}>Ai</span>
         </div>
         <span style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 15, fontWeight: 400, color: dark ? "#e2e8f0" : "#0f172a", letterSpacing: "0.02em" }}>InsightAI</span>
+      </button> */}
+      <button onClick={() => setSection("home")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+        <div style={{
+          position: "relative",
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          background: dark ? "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)" : "#f8fafc",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: dark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)",
+          boxShadow: dark ? "0 0 15px rgba(0,0,0,0.5), inset 0 0 8px rgba(255,255,255,0.05)" : "none"
+        }}>
+          {/* Subtle Glow Effect */}
+          {dark && <div style={{ position: "absolute", inset: 0, borderRadius: 8, background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05), transparent)" }} />}
+
+          <span style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: 14,
+            fontWeight: 700,
+            color: dark ? "#f8fafc" : "#0f172a",
+            letterSpacing: "-0.05em",
+            zIndex: 1
+          }}>
+            iA
+          </span>
+        </div>
+
+        <span style={{
+          fontFamily: "'DM Serif Display', serif",
+          fontSize: 18,
+          fontWeight: 400,
+          color: dark ? "#f1f5f9" : "#0f172a",
+          letterSpacing: "-0.02em"
+        }}>
+          InsightAI
+        </span>
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'DM Mono', monospace", fontSize: 11, color: dark ? "#64748b" : "#94a3b8", letterSpacing: "0.04em", textTransform: "uppercase" }}>
@@ -270,7 +308,7 @@ function TitleBar({ dark, setDark, activeSection, setSection, notifications }) {
           <motion.div animate={{ x: dark ? 22 : 2 }} transition={{ type: "spring", stiffness: 500, damping: 30 }} style={{ position: "absolute", top: 2, width: 18, height: 18, borderRadius: "50%", background: dark ? "#94a3b8" : "#64748b" }} />
         </button>
         <UserButton dark={dark} />
-      </div> 
+      </div>
     </motion.header>
   );
 }
@@ -278,7 +316,7 @@ function TitleBar({ dark, setDark, activeSection, setSection, notifications }) {
 // ─── LEFT SIDEBAR ─────────────────────────────────────────────────────────────
 function LeftSidebar({ activeSection, setSection, dark }) {
   const visible = activeSection !== "home";
-  const items   = BENTO_CARDS.map(c => ({ id: c.id, label: c.label, icon: c.icon }));
+  const items = BENTO_CARDS.map(c => ({ id: c.id, label: c.label, icon: c.icon }));
 
   return (
     <AnimatePresence>
@@ -355,8 +393,8 @@ function LeftSidebar({ activeSection, setSection, dark }) {
 // ─── FLOATING DOCK ────────────────────────────────────────────────────────────
 function FloatingDock({ activeSection, setSection, dark }) {
   const visible = activeSection !== "home";
-  const mouseX  = useMotionValue(Infinity);
-  const items   = BENTO_CARDS.map(c => ({ id: c.id, label: c.label, icon: c.icon }));
+  const mouseX = useMotionValue(Infinity);
+  const items = BENTO_CARDS.map(c => ({ id: c.id, label: c.label, icon: c.icon }));
 
   return (
     <AnimatePresence>
@@ -377,9 +415,9 @@ function FloatingDock({ activeSection, setSection, dark }) {
 }
 
 function DockItem({ item, active, dark, mouseX, onClick }) {
-  const ref      = useRef(null);
+  const ref = useRef(null);
   const distance = useMotionValue(Infinity);
-  const size     = useSpring(useTransform(distance, [-120, 0, 120], [36, 52, 36]), { stiffness: 300, damping: 28 });
+  const size = useSpring(useTransform(distance, [-120, 0, 120], [36, 52, 36]), { stiffness: 300, damping: 28 });
 
   useEffect(() => {
     const unsub = mouseX.on("change", (x) => {
@@ -408,11 +446,11 @@ function HeroSection({ dark, setSection }) {
         </motion.div>
 
         <h1 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(42px, 7vw, 88px)", fontWeight: 400, color: dark ? "#e2e8f0" : "#0f172a", margin: "0 0 24px", letterSpacing: "-0.04em", lineHeight: 1.05, fontStyle: "italic" }}>
-          Understand every<br />policy clause.
+          Your Policy, <br />Simplified.
         </h1>
 
         <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, lineHeight: 1.75, color: dark ? "#475569" : "#64748b", margin: "0 0 40px", fontWeight: 300 }}>
-          InsightAI parses Indian health insurance documents and answers natural-language queries with clause-level citations, confidence scores, and faithfulness audits.
+          Stop digging through endless PDFs. Just ask about your plan like you’re talking to a friend and get clear, verified answers straight from the source.
         </p>
 
         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={() => setSection("workspace")} style={{ padding: "14px 40px", borderRadius: 12, background: dark ? "#e2e8f0" : "#0f172a", color: dark ? "#0f172a" : "#e2e8f0", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 500, cursor: "pointer", letterSpacing: "0.01em" }}>
@@ -521,14 +559,14 @@ function Footer({ dark }) {
 const MODULE_MAP = {
   dashboard: DashboardModule,
   workspace: WorkspaceModule,  // ← replaces upload + query
-  compare:   CompareModule,
-  audit:     AuditModule,
+  compare: CompareModule,
+  audit: AuditModule,
 };
 
 
 function ModuleView({ id, dark, setSection }) {
   const Component = MODULE_MAP[id];
-  const card      = BENTO_CARDS.find(c => c.id === id);
+  const card = BENTO_CARDS.find(c => c.id === id);
   return (
     <motion.div key={id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} style={{ padding: "80px 24px 0" }}>
       <div style={{ maxWidth: 960, margin: "0 auto 40px" }}>
