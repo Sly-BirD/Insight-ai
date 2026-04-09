@@ -272,7 +272,7 @@ function TitleBar({ dark, setDark, activeSection, setSection, notifications }) {
             letterSpacing: "-0.05em",
             zIndex: 1
           }}>
-            iA
+            Փ
           </span>
         </div>
 
