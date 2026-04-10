@@ -32,5 +32,6 @@ class Settings:
     
     # APIs
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    GROQ_API_KEY_FALLBACK = os.getenv("GROQ_API_KEY_FALLBACK", "")
 
 settings = Settings()

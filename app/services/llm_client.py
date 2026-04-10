@@ -10,15 +10,28 @@ from app.core.config import settings
 
 _llm: Optional[ChatGroq] = None
 
-def init_llm() -> ChatGroq:
-    """Initialize and retrieve the ChatGroq LLM instance."""
+def init_llm():
+    """Initialize and retrieve the ChatGroq LLM instance with fallback logic."""
     global _llm
     if _llm is None:
-        _llm = ChatGroq(
+        primary_llm = ChatGroq(
             model=settings.LLM_MODEL_NAME,
             api_key=settings.GROQ_API_KEY,
             temperature=0.15,
             max_tokens=2500,
             model_kwargs={"response_format": {"type": "json_object"}},
         )
+        
+        if settings.GROQ_API_KEY_FALLBACK:
+            fallback_llm = ChatGroq(
+                model=settings.LLM_MODEL_NAME,
+                api_key=settings.GROQ_API_KEY_FALLBACK,
+                temperature=0.15,
+                max_tokens=2500,
+                model_kwargs={"response_format": {"type": "json_object"}},
+            )
+            _llm = primary_llm.with_fallbacks([fallback_llm])
+        else:
+            _llm = primary_llm
+            
     return _llm
