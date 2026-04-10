@@ -15,38 +15,7 @@ import { useState, useRef, useCallback, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/clerk-react";
 import { AppContext } from "../context/AppContext.jsx";
-
-const API_BASE = "http://localhost:8000";
-
-// ─── API calls ───────────────────────────────────────────────
-
-async function callIngest(files, getToken) {
-  const form = new FormData();
-  files.forEach((f) => form.append("files", f));
-  let authHeader = {};
-  try { const t = await getToken?.(); if (t) authHeader = { Authorization: `Bearer ${t}` }; } catch {}
-  const res = await fetch(`${API_BASE}/ingest`, { method: "POST", headers: authHeader, body: form });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-async function callQuery(question, getToken) {
-  let authHeader = {};
-  try { const t = await getToken?.(); if (t) authHeader = { Authorization: `Bearer ${t}` }; } catch {}
-  const res = await fetch(`${API_BASE}/query`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeader },
-    body: JSON.stringify({ question }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+import { ingestFiles, runQuery } from "../services/api.js";
 
 // ─── Decision meta ────────────────────────────────────────────
 const DECISION_META = {
@@ -161,7 +130,7 @@ function UploadPanel({ dark }) {
     }, 300);
 
     try {
-      const result = await callIngest(pending.map(f => f.file), getToken);
+      const result = await ingestFiles(pending.map(f => f.file), getToken);
       clearInterval(interval);
 
       // Mark done / error per file
@@ -368,7 +337,7 @@ function QueryPanel({ dark }) {
     setError(null);
 
     try {
-      const data = await callQuery(question, getToken);
+      const data = await runQuery(question, getToken);
       setResult(data);
       addQuery?.(question, data);
       show("Query complete", "success");

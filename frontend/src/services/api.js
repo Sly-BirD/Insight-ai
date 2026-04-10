@@ -66,9 +66,10 @@ export async function checkHealth() {
 
 // ─── GET /status (public) ─────────────────────────────────────
 
-export async function checkStatus() {
+export async function checkStatus(userId) {
   try {
-    const res = await fetch(`${BASE_URL}/status`, {
+    const url = userId ? `${BASE_URL}/status?user_id=${encodeURIComponent(userId)}` : `${BASE_URL}/status`;
+    const res = await fetch(url, {
       signal: AbortSignal.timeout(5_000),
     });
     return handleResponse(res);

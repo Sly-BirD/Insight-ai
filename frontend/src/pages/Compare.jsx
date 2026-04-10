@@ -19,28 +19,7 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/clerk-react";
-
-const API_BASE = "http://localhost:8000";
-
-// ─── API call ────────────────────────────────────────────────
-async function callCompare(fileA, fileB, getToken) {
-  const form = new FormData();
-  form.append("files", fileA);
-  form.append("files", fileB);
-  let authHeader = {};
-  try { const t = await getToken?.(); if (t) authHeader = { Authorization: `Bearer ${t}` }; } catch {}
-  const res = await fetch(`${API_BASE}/compare`, {
-    method: "POST",
-    headers: authHeader,
-    body: form,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
+import { compareFiles } from "../services/api.js";
 
 // ─── Category order and colors ────────────────────────────────
 const CATEGORY_ORDER = [
@@ -310,7 +289,7 @@ export default function CompareModule({ dark }) {
     setError(null);
 
     try {
-      const data = await callCompare(fileA, fileB, getToken);
+      const data = await compareFiles(fileA, fileB, getToken);
       setResult(data);
     } catch (err) {
       setError(err.message);

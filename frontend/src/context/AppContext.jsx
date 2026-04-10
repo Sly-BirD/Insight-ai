@@ -16,8 +16,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "@clerk/clerk-react";
-
-const API_BASE = "http://localhost:8000";
+import { checkHealth, checkStatus } from "../services/api.js";
 
 export const AppContext = createContext(null);
 
@@ -51,12 +50,8 @@ export function AppProvider({ children }) {
   useEffect(() => {
     let active = true;
     const check = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
-        if (active) setApiOnline(res.ok);
-      } catch {
-        if (active) setApiOnline(false);
-      }
+      const ok = await checkHealth();
+      if (active) setApiOnline(ok);
     };
     check();
     pollRef.current = setInterval(check, 30_000);
@@ -69,13 +64,7 @@ export function AppProvider({ children }) {
 
   const checkDocuments = useCallback(async () => {
     try {
-      // Pass userId so backend checks this user's collection (Silo Pattern)
-      const url = userId
-        ? `${API_BASE}/status?user_id=${encodeURIComponent(userId)}`
-        : `${API_BASE}/status`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!res.ok) { setHasDocuments(false); setDocumentCount(0); return; }
-      const data = await res.json();
+      const data = await checkStatus(userId);
       const count = data?.node_count ?? 0;
       setDocumentCount(count);
       setHasDocuments(count > 0);

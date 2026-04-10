@@ -11,39 +11,7 @@ import UserButton from "./components/UserButton.jsx";
 
 
 // ─── API CONFIG ───────────────────────────────────────────────────────────────
-const API_BASE = "http://localhost:8000";
-
-async function apiQuery(question) {
-  const res = await fetch(`${API_BASE}/query`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-async function apiIngest(files) {
-  const form = new FormData();
-  files.forEach((f) => form.append("files", f));
-  const res = await fetch(`${API_BASE}/ingest`, {
-    method: "POST",
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `HTTP ${res.status}`);
-  }
-  return res.json();
-}
-
-async function apiHealth() {
-  const res = await fetch(`${API_BASE}/health`);
-  return res.ok;
-}
+import { checkHealth } from "./services/api.js";
 
 // ─── APP CONTEXT ────────────────────────────────────────────────────────────
 import { AppContext, AppProvider, useApp } from "./context/AppContext.jsx";
@@ -195,7 +163,7 @@ function ApiStatusDot({ dark }) {
     let active = true;
     const check = async () => {
       try {
-        const ok = await apiHealth();
+        const ok = await checkHealth();
         if (active) setOnline(ok);
       } catch {
         if (active) setOnline(false);

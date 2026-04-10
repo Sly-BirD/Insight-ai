@@ -436,7 +436,7 @@ export default function QueryModule({ dark }) {
               letterSpacing: "0.04em",
               marginTop:     8,
             }}>
-              Make sure the API is running at localhost:8000
+              Make sure the API is running and connected
             </p>
           </motion.div>
         )}

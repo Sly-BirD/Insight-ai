@@ -1,15 +1,21 @@
-Dependencies (install before running):
-    pip install llama-index llama-index-vector-stores-weaviate \
-                llama-index-embeddings-huggingface \
-                llama-index-readers-file \
-                unstructured[pdf] weaviate-client loguru
-
-    pip install langgraph langchain langchain-together langchain-core
-
-    pip install langgraph langchain langchain-together \
-                llama-index llama-index-vector-stores-weaviate \
-                llama-index-embeddings-huggingface \
-                weaviate-client loguru pydantic
-
-
-    pip install fastapi uvicorn python-multipart
+fastapi
+uvicorn
+python-multipart
+llama-index
+llama-index-vector-stores-weaviate
+llama-index-embeddings-huggingface
+llama-index-readers-file
+unstructured[pdf]
+weaviate-client<4.10.0
+loguru
+langgraph
+langchain
+langchain-groq
+langchain-core
+pydantic
+python-dotenv
+json-repair
+PyJWT
+httpx
+supabase
+cryptography
