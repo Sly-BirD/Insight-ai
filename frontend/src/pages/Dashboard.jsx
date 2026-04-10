@@ -4,25 +4,20 @@
  * Step 7: Dashboard wired to GET /analytics.
  * Shows real query counts, decision breakdown, confidence/audit
  * averages, and a 14-day trend chart — all from live backend data.
- *
- * Wire into InsightAI.jsx MODULE_MAP:
- *   import DashboardModule from "./pages/Dashboard.jsx";
- *   const MODULE_MAP = { dashboard: DashboardModule, ... };
  */
 
-import { useState, useEffect, useContext } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useAuth } from "@clerk/clerk-react";
 import { fetchAnalytics } from "../services/api";
-import { AppContext } from "../context/AppContext.jsx";
 
 // ─── helpers ─────────────────────────────────────────────────
 const decisionColor = (d) => ({
-  approve: "#22c55e",
-  reject: "#ef4444",
-  partial: "#f59e0b",
-  informational: "#94a3b8",
-}[d?.toLowerCase()] ?? "#94a3b8");
+  approve: "var(--color-success)",
+  reject: "var(--color-error)",
+  partial: "var(--color-warning)",
+  informational: "var(--color-info)",
+}[d?.toLowerCase()] ?? "var(--color-info)");
 
 const decisionLabel = (d) => ({
   approve: "Approved",
@@ -30,13 +25,6 @@ const decisionLabel = (d) => ({
   partial: "Partial",
   informational: "Info",
 }[d?.toLowerCase()] ?? d);
-
-function formatTime(iso) {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch { return "—"; }
-}
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -47,53 +35,29 @@ function formatDate(iso) {
 }
 
 // ─── Stat card ────────────────────────────────────────────────
-function StatCard({ label, value, sub, color, dark, delay = 0 }) {
+function StatCard({ label, value, sub, color, delay = 0 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      style={{
-        padding: "20px 22px", borderRadius: 14,
-        background: dark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
-        border: dark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
-      }}
+      transition={{ delay, duration: 0.5 }}
+      className="card"
     >
-      <div style={{
-        fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.1em",
-        textTransform: "uppercase", color: dark ? "#334155" : "#94a3b8", marginBottom: 10
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 30,
-        fontWeight: 400, color: color ?? (dark ? "#e2e8f0" : "#0f172a"),
-        letterSpacing: "-0.03em", lineHeight: 1
-      }}>
+      <div className="text-small" style={{ marginBottom: 8 }}>{label}</div>
+      <div className="heading-display" style={{ fontSize: 40, color: color ?? "var(--color-text-primary)", marginBottom: 4 }}>
         {value ?? "—"}
       </div>
-      {sub && (
-        <div style={{
-          fontFamily: "'DM Mono', monospace", fontSize: 10,
-          color: dark ? "#334155" : "#94a3b8", marginTop: 7
-        }}>
-          {sub}
-        </div>
-      )}
+      {sub && <div className="text-small">{sub}</div>}
     </motion.div>
   );
 }
 
 // ─── Trend chart ─────────────────────────────────────────────
-function TrendChart({ dailyCounts, dark }) {
+function TrendChart({ dailyCounts }) {
   if (!dailyCounts?.length) {
     return (
-      <div style={{
-        padding: "32px", textAlign: "center",
-        fontFamily: "'DM Mono', monospace", fontSize: 11,
-        color: dark ? "#334155" : "#94a3b8", letterSpacing: "0.06em"
-      }}>
-        No trend data yet — run some queries first.
+      <div className="text-body" style={{ textAlign: "center", padding: "40px" }}>
+        No trend data yet. Run some queries first.
       </div>
     );
   }
@@ -102,51 +66,32 @@ function TrendChart({ dailyCounts, dark }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80, marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120, marginBottom: 12 }}>
         {dailyCounts.map((d, i) => (
-          <div key={d.date} style={{
-            flex: 1, display: "flex", flexDirection: "column",
-            gap: 2, alignItems: "center"
-          }}>
+          <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
             <motion.div
-              initial={{ scaleY: 0 }}
-              animate={{ scaleY: 1 }}
-              transition={{ delay: 0.3 + i * 0.04, duration: 0.4 }}
+              initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 0.3 + i * 0.04 }}
               style={{
-                width: "100%",
-                height: (d.queries / maxQ) * 64,
-                background: dark ? "rgba(148,163,184,0.25)" : "rgba(30,41,59,0.15)",
-                borderRadius: "3px 3px 0 0",
-                transformOrigin: "bottom",
+                width: "100%", height: `${(d.queries / maxQ) * 100}%`,
+                background: "var(--color-border-strong)", borderRadius: "4px 4px 0 0", transformOrigin: "bottom",
               }}
             />
             {d.rejected > 0 && (
               <motion.div
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: 1 }}
-                transition={{ delay: 0.35 + i * 0.04, duration: 0.4 }}
+                initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 0.35 + i * 0.04 }}
                 style={{
-                  width: "100%",
-                  height: (d.rejected / maxQ) * 64 * 0.5,
-                  background: "rgba(239,68,68,0.3)",
-                  borderRadius: "3px 3px 0 0",
-                  transformOrigin: "bottom",
+                  width: "100%", height: `${(d.rejected / maxQ) * 100 * 0.5}%`,
+                  background: "var(--color-error)", borderRadius: "4px 4px 0 0", transformOrigin: "bottom",
+                  opacity: 0.6
                 }}
               />
             )}
           </div>
         ))}
       </div>
-      {/* X-axis dates */}
-      <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", gap: 8 }}>
         {dailyCounts.map((d, i) => (
-          <div key={d.date} style={{
-            flex: 1, textAlign: "center",
-            fontFamily: "'DM Mono', monospace", fontSize: 8,
-            color: dark ? "#1e293b" : "#e2e8f0",
-            // Only show every 3rd label to avoid crowding
-            opacity: i % 3 === 0 ? 1 : 0,
-          }}>
+          <div key={d.date} className="text-small" style={{ flex: 1, textAlign: "center", fontSize: 11, opacity: i % 3 === 0 ? 1 : 0 }}>
             {formatDate(d.date)}
           </div>
         ))}
@@ -155,56 +100,31 @@ function TrendChart({ dailyCounts, dark }) {
   );
 }
 
-// ─── Decision donut (CSS-based, no chart lib needed) ─────────
-function DecisionBreakdown({ decisions, total, dark }) {
+// ─── Decision donut ──────────────────────────────────────────
+function DecisionBreakdown({ decisions, total }) {
   if (!total) return null;
 
   const items = [
-    { key: "approve", label: "Approved", color: "#22c55e" },
-    { key: "reject", label: "Rejected", color: "#ef4444" },
-    { key: "partial", label: "Partial", color: "#f59e0b" },
-    { key: "informational", label: "Informational", color: "#94a3b8" },
+    { key: "approve", label: "Approved", color: "var(--color-success)" },
+    { key: "reject", label: "Rejected", color: "var(--color-error)" },
+    { key: "partial", label: "Partial", color: "var(--color-warning)" },
+    { key: "informational", label: "Informational", color: "var(--color-info)" },
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {items.map((item, i) => {
         const count = decisions?.[item.key] ?? 0;
         const pct = total > 0 ? Math.round((count / total) * 100) : 0;
         return (
-          <motion.div key={item.key}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 + i * 0.07 }}
-          >
-            <div style={{
-              display: "flex", justifyContent: "space-between",
-              marginBottom: 4
-            }}>
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif", fontSize: 12,
-                color: dark ? "#64748b" : "#475569", fontWeight: 300
-              }}>
-                {item.label}
-              </span>
-              <span style={{
-                fontFamily: "'DM Mono', monospace", fontSize: 11,
-                color: item.color
-              }}>
-                {count} <span style={{ opacity: 0.5 }}>({pct}%)</span>
-              </span>
+          <motion.div key={item.key} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 + i * 0.07 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span className="text-body">{item.label}</span>
+              <span className="text-body" style={{ color: item.color }}>{count} <span style={{ opacity: 0.5 }}>({pct}%)</span></span>
             </div>
-            <div style={{
-              height: 3, borderRadius: 2,
-              background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-              overflow: "hidden"
-            }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
-                transition={{ delay: 0.3 + i * 0.07, duration: 0.6, ease: "easeOut" }}
-                style={{ height: "100%", borderRadius: 2, background: item.color }}
-              />
+            <div style={{ height: 6, borderRadius: 3, background: "var(--color-border-subtle)", overflow: "hidden" }}>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ delay: 0.3 + i * 0.07, duration: 0.6 }}
+                style={{ height: "100%", borderRadius: 3, background: item.color }} />
             </div>
           </motion.div>
         );
@@ -213,77 +133,26 @@ function DecisionBreakdown({ decisions, total, dark }) {
   );
 }
 
-// ─── Recent queries mini-table ────────────────────────────────
-function RecentQueriesTable({ queries, dark }) {
+// ─── Recent queries ───────────────────────────────────────────
+function RecentQueriesTable({ queries }) {
   if (!queries?.length) {
-    return (
-      <div style={{
-        padding: "24px", textAlign: "center",
-        fontFamily: "'DM Mono', monospace", fontSize: 11,
-        color: dark ? "#334155" : "#94a3b8", letterSpacing: "0.06em"
-      }}>
-        No queries yet — ask something in the Workspace.
-      </div>
-    );
+    return <div className="text-body" style={{ padding: "32px", textAlign: "center" }}>No queries yet.</div>;
   }
 
   return (
     <div>
-      {/* Header */}
-      <div style={{
-        display: "grid", gridTemplateColumns: "1fr 80px 60px 60px",
-        padding: "8px 14px", gap: 8,
-        borderBottom: dark ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(0,0,0,0.04)"
-      }}>
-        {["Question", "Decision", "Conf.", "Audit"].map(h => (
-          <span key={h} style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 8,
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            color: dark ? "#1e293b" : "#e2e8f0"
-          }}>
-            {h}
-          </span>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 80px", padding: "12px 16px", borderBottom: "1px solid var(--color-border)" }}>
+        {["Question", "Decision", "Confidence", "Audit"].map(h => (
+          <span key={h} className="text-small" style={{ fontWeight: 500 }}>{h}</span>
         ))}
       </div>
-
       {queries.slice(0, 8).map((row, i) => (
-        <motion.div key={row.id ?? i}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: i * 0.04 }}
-          style={{
-            display: "grid", gridTemplateColumns: "1fr 80px 60px 60px",
-            padding: "10px 14px", gap: 8, alignItems: "center",
-            borderBottom: i < Math.min(queries.length, 8) - 1
-              ? (dark ? "1px solid rgba(255,255,255,0.03)" : "1px solid rgba(0,0,0,0.04)")
-              : "none",
-          }}
-        >
-          <span style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 12,
-            color: dark ? "#64748b" : "#475569", fontWeight: 300,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-          }}
-            title={row.question}>
-            {row.question}
-          </span>
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 10,
-            color: decisionColor(row.decision)
-          }}>
-            {decisionLabel(row.decision)}
-          </span>
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 10,
-            color: dark ? "#475569" : "#64748b"
-          }}>
-            {row.confidence}%
-          </span>
-          <span style={{
-            fontFamily: "'DM Mono', monospace", fontSize: 10,
-            color: (row.audit_score ?? 0) >= 85 ? "#22c55e"
-              : (row.audit_score ?? 0) >= 70 ? "#f59e0b" : "#ef4444"
-          }}>
+        <motion.div key={row.id ?? i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
+          style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 80px", padding: "16px", alignItems: "center", borderBottom: i < Math.min(queries.length, 8) - 1 ? "1px solid var(--color-border-subtle)" : "none" }}>
+          <span className="text-body" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={row.question}>{row.question}</span>
+          <span className="text-small" style={{ color: decisionColor(row.decision) }}>{decisionLabel(row.decision)}</span>
+          <span className="text-small">{row.confidence}%</span>
+          <span className="text-small" style={{ color: (row.audit_score ?? 0) >= 85 ? "var(--color-success)" : (row.audit_score ?? 0) >= 70 ? "var(--color-warning)" : "var(--color-error)" }}>
             {row.audit_score ?? "—"}/100
           </span>
         </motion.div>
@@ -293,7 +162,7 @@ function RecentQueriesTable({ queries, dark }) {
 }
 
 // ─── Main component ───────────────────────────────────────────
-export default function DashboardModule({ dark }) {
+export default function DashboardModule() {
   const { getToken } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -301,169 +170,66 @@ export default function DashboardModule({ dark }) {
   const [lastFetch, setLastFetch] = useState(null);
 
   const load = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const data = await fetchAnalytics(getToken);
-      setAnalytics(data);
-      setLastFetch(new Date());
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      setAnalytics(data); setLastFetch(new Date());
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
   };
 
-  // Load on mount and auto-refresh every 30s
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => { load(); const interval = setInterval(load, 30_000); return () => clearInterval(interval); }, []);
 
-  const monoSm = {
-    fontFamily: "'DM Mono', monospace",
-    fontSize: 9, letterSpacing: "0.1em",
-    textTransform: "uppercase",
-    color: dark ? "#334155" : "#94a3b8",
-  };
-
-  const cardStyle = {
-    padding: "20px 22px", borderRadius: 14,
-    background: dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.015)",
-    border: dark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.05)",
-  };
-
-  if (loading && !analytics) {
-    return (
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 0", textAlign: "center" }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-          style={{
-            width: 24, height: 24, border: `2px solid ${dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
-            borderTopColor: dark ? "#94a3b8" : "#475569", borderRadius: "50%", display: "inline-block"
-          }} />
-        <p style={{ ...monoSm, marginTop: 12 }}>Loading analytics…</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 0 60px" }}>
-        <div style={{
-          padding: "16px 20px", borderRadius: 12,
-          background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)"
-        }}>
-          <p style={{ ...monoSm, color: "#ef4444", marginBottom: 4 }}>Error loading analytics</p>
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13,
-            color: dark ? "#fca5a5" : "#ef4444", margin: "0 0 10px", fontWeight: 300
-          }}>
-            {error}
-          </p>
-          <button onClick={load} style={{
-            padding: "7px 16px", borderRadius: 8, border: "none",
-            background: dark ? "#1e293b" : "#0f172a", color: dark ? "#94a3b8" : "#e2e8f0",
-            fontFamily: "'DM Sans', sans-serif", fontSize: 12, cursor: "pointer"
-          }}>
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (loading && !analytics) return <div className="text-body" style={{ textAlign: "center", padding: "80px" }}>Loading analytics…</div>;
+  if (error) return (
+    <div className="card" style={{ maxWidth: 600, margin: "0 auto", borderColor: "var(--color-error)" }}>
+      <div className="heading-section" style={{ color: "var(--color-error)", marginBottom: 8 }}>Error loading analytics</div>
+      <div className="text-body" style={{ marginBottom: 16 }}>{error}</div>
+      <button className="btn btn-primary" onClick={load}>Retry</button>
+    </div>
+  );
 
   const a = analytics;
   const total = a?.total_queries ?? 0;
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 0 60px" }}>
-
-      {/* Refresh row */}
-      <div style={{
-        display: "flex", justifyContent: "flex-end", alignItems: "center",
-        gap: 10, marginBottom: 20
-      }}>
-        {lastFetch && (
-          <span style={{ ...monoSm }}>
-            Updated {lastFetch.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-        )}
-        <button onClick={load} disabled={loading}
-          style={{
-            padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer",
-            background: dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
-            fontFamily: "'DM Mono', monospace", fontSize: 9, letterSpacing: "0.08em",
-            textTransform: "uppercase", color: dark ? "#475569" : "#94a3b8"
-          }}>
-          {loading ? "…" : "↻ Refresh"}
-        </button>
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 0 100px" }}>
+      {/* Header controls */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, marginBottom: 32 }}>
+        {lastFetch && <span className="text-small">Updated {lastFetch.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
+        <button className="btn btn-ghost" onClick={load} disabled={loading}>{loading ? "…" : "↻ Refresh"}</button>
       </div>
 
-      {/* Stat cards row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        <StatCard dark={dark} delay={0} label="Total Queries" value={total.toLocaleString()} sub="all time" />
-        <StatCard dark={dark} delay={0.06} label="Avg Confidence" value={`${a?.avg_confidence ?? 0}%`} sub="across all queries" color={dark ? "#e2e8f0" : "#0f172a"} />
-        <StatCard dark={dark} delay={0.12} label="Avg Audit Score" value={`${a?.avg_audit_score ?? 0}`} sub="faithfulness / 100"
-          color={(a?.avg_audit_score ?? 0) >= 80 ? "#22c55e" : (a?.avg_audit_score ?? 0) >= 65 ? "#f59e0b" : "#ef4444"} />
-        <StatCard dark={dark} delay={0.18} label="Avg Query Time" value={`${a?.avg_duration_s ?? 0}s`} sub="end-to-end latency" />
+      {/* Top stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24, marginBottom: 32 }}>
+        <StatCard label="Total Queries" value={total.toLocaleString()} sub="all time" />
+        <StatCard delay={0.06} label="Avg Confidence" value={`${a?.avg_confidence ?? 0}%`} sub="model certainty" />
+        <StatCard delay={0.12} label="Avg Audit Score" value={`${a?.avg_audit_score ?? 0}`} sub="faithfulness vs original" color={(a?.avg_audit_score ?? 0) >= 80 ? "var(--color-success)" : "var(--color-error)"} />
+        <StatCard delay={0.18} label="Avg Query Time" value={`${a?.avg_duration_s ?? 0}s`} sub="latency" />
       </div>
 
-      {/* Middle row: Decision breakdown + Trend chart */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 24, marginBottom: 24 }}>
+        {/* Breakdown */}
+        <div className="card">
+          <div className="heading-section" style={{ fontSize: 24, marginBottom: 24 }}>Decisions</div>
+          {total === 0 ? <div className="text-body">No queries yet.</div> : <DecisionBreakdown decisions={a?.decisions} total={total} />}
+        </div>
 
-        {/* Decision breakdown */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.24 }} style={cardStyle}>
-          <p style={{ ...monoSm, marginBottom: 16 }}>Decision Breakdown</p>
-          {total === 0 ? (
-            <p style={{
-              fontFamily: "'DM Sans', sans-serif", fontSize: 12,
-              color: dark ? "#334155" : "#94a3b8", fontWeight: 300
-            }}>
-              No queries yet.
-            </p>
-          ) : (
-            <DecisionBreakdown decisions={a?.decisions} total={total} dark={dark} />
-          )}
-        </motion.div>
-
-        {/* Trend chart */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.28 }} style={cardStyle}>
-          <p style={{ ...monoSm, marginBottom: 16 }}>Query Volume — Last 14 Days</p>
-          <TrendChart dailyCounts={a?.daily_counts ?? []} dark={dark} />
-          <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{
-                width: 10, height: 3, borderRadius: 2,
-                background: dark ? "rgba(148,163,184,0.25)" : "rgba(30,41,59,0.15)"
-              }} />
-              <span style={{ ...monoSm }}>All queries</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{
-                width: 10, height: 3, borderRadius: 2,
-                background: "rgba(239,68,68,0.3)"
-              }} />
-              <span style={{ ...monoSm }}>Rejected</span>
-            </div>
+        {/* Trend */}
+        <div className="card">
+          <div className="heading-section" style={{ fontSize: 24, marginBottom: 24 }}>Query Volume</div>
+          <TrendChart dailyCounts={a?.daily_counts ?? []} />
+          <div style={{ display: "flex", gap: 24, marginTop: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 12, height: 4, borderRadius: 2, background: "var(--color-border-strong)" }} /><span className="text-small">All queries</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 12, height: 4, borderRadius: 2, background: "var(--color-error)", opacity: 0.6 }} /><span className="text-small">Rejected</span></div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
-      {/* Recent queries table */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.32 }}
-        style={{ ...cardStyle, overflow: "hidden" }}>
-        <p style={{
-          ...monoSm, marginBottom: 2, padding: "0 0 12px",
-          borderBottom: dark ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(0,0,0,0.04)"
-        }}>
-          Recent Queries
-        </p>
-        <RecentQueriesTable queries={a?.recent_queries ?? []} dark={dark} />
-      </motion.div>
+      {/* Recent queries */}
+      <div className="card" style={{ padding: "8px 0" }}>
+        <div className="heading-section" style={{ fontSize: 24, padding: "24px 24px 16px" }}>Recent Activity</div>
+        <RecentQueriesTable queries={a?.recent_queries ?? []} />
+      </div>
     </div>
   );
 }

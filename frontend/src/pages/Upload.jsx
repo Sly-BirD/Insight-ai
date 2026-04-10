@@ -79,11 +79,11 @@ function useToast() {
 
 // ─── file-status helpers ──────────────────────────────────────
 const statusColor = (status, dark) => ({
-  pending:   dark ? "#334155" : "#94a3b8",
+  pending:   dark ? "#5a6a78" : "#94a3b8",
   uploading: dark ? "#94a3b8" : "#475569",
   done:      "#22c55e",
   error:     "#ef4444",
-}[status] ?? (dark ? "#334155" : "#94a3b8"));
+}[status] ?? (dark ? "#5a6a78" : "#94a3b8"));
 
 const statusLabel = (status, progress) => ({
   pending:   "Pending",
@@ -210,7 +210,7 @@ export default function UploadModule({ dark }) {
     fontSize:      10,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color:         dark ? "#334155" : "#94a3b8",
+    color:         dark ? "#5a6a78" : "#94a3b8",
   };
 
   const hasPending = fileList.some((f) => f.status === "pending");
@@ -233,7 +233,7 @@ export default function UploadModule({ dark }) {
           border:       `2px dashed ${
             dragging
               ? (dark ? "rgba(148,163,184,0.4)" : "rgba(30,41,59,0.3)")
-              : (dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)")
+              : (dark ? "rgba(15,23,42,0.65)" : "rgba(0,0,0,0.08)")
           }`,
           borderRadius: 20,
           padding:      "52px 32px",
@@ -261,7 +261,7 @@ export default function UploadModule({ dark }) {
           fontSize:   28,
           color:      dragging
             ? (dark ? "#64748b" : "#64748b")
-            : (dark ? "#1e293b" : "#e2e8f0"),
+            : (dark ? "#3a4550" : "#e2e8f0"),
           marginBottom: 14,
           lineHeight:   1,
           transition:   "color 0.2s",
@@ -273,7 +273,7 @@ export default function UploadModule({ dark }) {
           fontFamily: "'DM Serif Display', Georgia, serif",
           fontSize:   20,
           fontStyle:  "italic",
-          color:      dark ? "#475569" : "#64748b",
+          color:      dark ? "#8899a6" : "#64748b",
           margin:     "0 0 6px",
         }}>
           {dragging ? "Release to add files" : "Drop policy PDFs here"}
@@ -283,7 +283,7 @@ export default function UploadModule({ dark }) {
           fontFamily:    "'DM Mono', monospace",
           fontSize:      11,
           letterSpacing: "0.06em",
-          color:         dark ? "#1e293b" : "#cbd5e1",
+          color:         dark ? "#3a4550" : "#cbd5e1",
         }}>
           PDF only · Max 50 MB per file · Click to browse
         </p>
@@ -303,7 +303,7 @@ export default function UploadModule({ dark }) {
             <div style={{
               padding:      "14px 18px",
               borderRadius: 12,
-              background:   dark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)",
+              background:   dark ? "rgba(15,23,42,0.72)" : "rgba(0,0,0,0.025)",
               border:       dark
                 ? "1px solid rgba(255,255,255,0.06)"
                 : "1px solid rgba(0,0,0,0.06)",
@@ -362,7 +362,7 @@ export default function UploadModule({ dark }) {
                         background: "none",
                         border:     "none",
                         cursor:     "pointer",
-                        color:      dark ? "#1e293b" : "#e2e8f0",
+                        color:      dark ? "#3a4550" : "#e2e8f0",
                         fontSize:   14,
                         lineHeight: 1,
                         padding:    "2px 4px",
@@ -370,7 +370,7 @@ export default function UploadModule({ dark }) {
                         transition: "color 0.15s",
                       }}
                       onMouseEnter={(e) => { e.target.style.color = dark ? "#ef4444" : "#dc2626"; }}
-                      onMouseLeave={(e) => { e.target.style.color = dark ? "#1e293b" : "#e2e8f0"; }}
+                      onMouseLeave={(e) => { e.target.style.color = dark ? "#3a4550" : "#e2e8f0"; }}
                       title="Remove"
                     >
                       ×
@@ -420,7 +420,7 @@ export default function UploadModule({ dark }) {
           <span style={{
             fontFamily:    "'DM Mono', monospace",
             fontSize:      11,
-            color:         dark ? "#334155" : "#94a3b8",
+            color:         dark ? "#5a6a78" : "#94a3b8",
             letterSpacing: "0.04em",
           }}>
             {fileList.length} file{fileList.length !== 1 ? "s" : ""} selected
@@ -443,7 +443,7 @@ export default function UploadModule({ dark }) {
                   fontFamily:   "'DM Sans', sans-serif",
                   fontSize:     13,
                   fontWeight:   400,
-                  color:        dark ? "#475569" : "#64748b",
+                  color:        dark ? "#8899a6" : "#64748b",
                   cursor:       "pointer",
                   transition:   "border-color 0.2s",
                 }}
@@ -465,7 +465,7 @@ export default function UploadModule({ dark }) {
                   ? (dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)")
                   : (dark ? "#e2e8f0" : "#0f172a"),
                 color: uploading || !hasPending
-                  ? (dark ? "#334155" : "#94a3b8")
+                  ? (dark ? "#5a6a78" : "#94a3b8")
                   : (dark ? "#0f172a" : "#e2e8f0"),
                 border:      "none",
                 fontFamily:  "'DM Sans', sans-serif",
@@ -487,7 +487,7 @@ export default function UploadModule({ dark }) {
                     style={{
                       width:  12, height: 12,
                       border: "2px solid rgba(148,163,184,0.2)",
-                      borderTopColor: dark ? "#334155" : "#94a3b8",
+                      borderTopColor: dark ? "#5a6a78" : "#94a3b8",
                       borderRadius:   "50%",
                     }}
                   />
@@ -543,7 +543,7 @@ export default function UploadModule({ dark }) {
                     fontSize:      9,
                     letterSpacing: "0.1em",
                     textTransform: "uppercase",
-                    color:         dark ? "#334155" : "#94a3b8",
+                    color:         dark ? "#5a6a78" : "#94a3b8",
                     marginBottom:  4,
                   }}>
                     {k}

@@ -202,7 +202,7 @@ export default function QueryModule({ dark }) {
     fontSize:      10,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
-    color:         dark ? "#334155" : "#94a3b8",
+    color:         dark ? "#5a6a78" : "#94a3b8",
   };
 
   // ── render ─────────────────────────────────────────────────
@@ -230,7 +230,7 @@ export default function QueryModule({ dark }) {
               width:       "100%",
               padding:     "18px 20px",
               borderRadius: 14,
-              background:  dark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.025)",
+              background:  dark ? "rgba(15,23,42,0.65)" : "rgba(0,0,0,0.025)",
               border:      dark
                 ? "1px solid rgba(255,255,255,0.1)"
                 : "1px solid rgba(0,0,0,0.1)",
@@ -259,7 +259,7 @@ export default function QueryModule({ dark }) {
           <span style={{
             fontFamily:    "'DM Mono', monospace",
             fontSize:      10,
-            color:         dark ? "#1e293b" : "#e2e8f0",
+            color:         dark ? "#3a4550" : "#e2e8f0",
             letterSpacing: "0.04em",
           }}>
             ⌘ + Enter to submit
@@ -277,7 +277,7 @@ export default function QueryModule({ dark }) {
                 ? (dark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)")
                 : (dark ? "#e2e8f0" : "#0f172a"),
               color: loading || !question.trim()
-                ? (dark ? "#334155" : "#94a3b8")
+                ? (dark ? "#5a6a78" : "#94a3b8")
                 : (dark ? "#0f172a" : "#e2e8f0"),
               border:      "none",
               fontFamily:  "'DM Sans', sans-serif",
@@ -299,7 +299,7 @@ export default function QueryModule({ dark }) {
                   style={{
                     width:  12, height: 12,
                     border: "2px solid rgba(148,163,184,0.2)",
-                    borderTopColor: dark ? "#334155" : "#94a3b8",
+                    borderTopColor: dark ? "#5a6a78" : "#94a3b8",
                     borderRadius:   "50%",
                   }}
                 />
@@ -337,7 +337,7 @@ export default function QueryModule({ dark }) {
                   fontFamily:   "'DM Sans', sans-serif",
                   fontSize:     13,
                   fontWeight:   300,
-                  color:        dark ? "#475569" : "#64748b",
+                  color:        dark ? "#8899a6" : "#64748b",
                   cursor:       "pointer",
                   transition:   "border-color 0.2s, color 0.2s",
                   lineHeight:   1.5,
@@ -352,7 +352,7 @@ export default function QueryModule({ dark }) {
                   e.target.style.borderColor = dark
                     ? "rgba(255,255,255,0.05)"
                     : "rgba(0,0,0,0.06)";
-                  e.target.style.color = dark ? "#475569" : "#64748b";
+                  e.target.style.color = dark ? "#8899a6" : "#64748b";
                 }}
               >
                 {q}
@@ -386,7 +386,7 @@ export default function QueryModule({ dark }) {
             <p style={{
               fontFamily:    "'DM Mono', monospace",
               fontSize:      11,
-              color:         dark ? "#334155" : "#94a3b8",
+              color:         dark ? "#5a6a78" : "#94a3b8",
               marginTop:     16,
               letterSpacing: "0.06em",
             }}>
@@ -432,7 +432,7 @@ export default function QueryModule({ dark }) {
             <p style={{
               fontFamily:    "'DM Mono', monospace",
               fontSize:      10,
-              color:         dark ? "#334155" : "#94a3b8",
+              color:         dark ? "#5a6a78" : "#94a3b8",
               letterSpacing: "0.04em",
               marginTop:     8,
             }}>
@@ -505,7 +505,7 @@ export default function QueryModule({ dark }) {
                     fontFamily:    "'DM Mono', monospace",
                     fontSize:      11,
                     letterSpacing: "0.06em",
-                    color:         dark ? "#475569" : "#94a3b8",
+                    color:         dark ? "#8899a6" : "#94a3b8",
                   }}>
                     {result.answer?.confidence}% confidence
                   </span>
@@ -557,14 +557,14 @@ export default function QueryModule({ dark }) {
                         alignItems:   "flex-start",
                         padding:      "12px 16px",
                         borderRadius: 10,
-                        background:   dark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+                        background:   dark ? "rgba(15,23,42,0.75)" : "rgba(0,0,0,0.02)",
                         border:       dark
                           ? "1px solid rgba(255,255,255,0.04)"
                           : "1px solid rgba(0,0,0,0.04)",
                       }}
                     >
                       <span style={{
-                        color:     dark ? "#334155" : "#cbd5e1",
+                        color:     dark ? "#5a6a78" : "#cbd5e1",
                         marginTop: 2,
                         flexShrink: 0,
                         fontSize:  11,
@@ -573,7 +573,7 @@ export default function QueryModule({ dark }) {
                         fontFamily: "'DM Mono', monospace",
                         fontSize:   11,
                         lineHeight: 1.65,
-                        color:      dark ? "#475569" : "#64748b",
+                        color:      dark ? "#8899a6" : "#64748b",
                       }}>
                         {clause}
                       </span>
@@ -688,11 +688,11 @@ export default function QueryModule({ dark }) {
                 <span key={k} style={{
                   fontFamily:    "'DM Mono', monospace",
                   fontSize:      10,
-                  color:         dark ? "#1e293b" : "#e2e8f0",
+                  color:         dark ? "#3a4550" : "#e2e8f0",
                   letterSpacing: "0.04em",
                 }}>
                   {k}:{" "}
-                  <span style={{ color: dark ? "#334155" : "#94a3b8" }}>{v}</span>
+                  <span style={{ color: dark ? "#5a6a78" : "#94a3b8" }}>{v}</span>
                 </span>
               ))}
             </div>
