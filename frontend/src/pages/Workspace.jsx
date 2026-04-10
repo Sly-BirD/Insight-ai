@@ -6,11 +6,11 @@
  * Updated for the SaaS architecture using theme.css classes.
  */
 
-import { useState, useRef, useCallback, useContext } from "react";
+import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/clerk-react";
 import { AppContext } from "../context/AppContext.jsx";
-import { ingestFiles, runQuery } from "../services/api.js";
+import { ingestFiles, runQuery, fetchDocuments } from "../services/api.js";
 
 // ─── Decision meta ────────────────────────────────────────────
 const DECISION_META = {
@@ -77,8 +77,27 @@ function UploadPanel() {
   } = useContext(AppContext);
 
   const [dragging, setDragging] = useState(false);
+  const [cachedDocs, setCachedDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(true);
   const fileInputRef = useRef(null);
   const { show, Toast } = useToast();
+
+  useEffect(() => {
+    async function loadDocs() {
+      setLoadingDocs(true);
+      try {
+        const res = await fetchDocuments(getToken);
+        if (res?.documents) {
+          setCachedDocs(res.documents);
+        }
+      } catch (err) {
+        console.error("Failed to fetch past documents", err);
+      } finally {
+        setLoadingDocs(false);
+      }
+    }
+    loadDocs();
+  }, [getToken]);
 
   const addFiles = useCallback((incoming) => {
     const pdfs = Array.from(incoming).filter(f => f.name.toLowerCase().endsWith(".pdf"));
@@ -220,11 +239,33 @@ function UploadPanel() {
         </div>
       )}
 
+      {/* Previously Uploaded Panel */}
+      {cachedDocs.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div className="heading-section" style={{ fontSize: 16, marginBottom: 12, borderTop: "1px solid var(--color-border-subtle)", paddingTop: 16 }}>
+            Recently Uploaded Library
+          </div>
+          <div className="text-small" style={{ marginBottom: 12, color: "var(--color-text-muted)" }}>
+            These documents are already in your workspace and Ready to Query.
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {cachedDocs.map((docName, idx) => (
+              <div key={idx} className="card-subtle" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px" }}>
+                <span style={{ color: "var(--color-success)" }}>✓</span>
+                <span className="text-body" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {docName}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Success result */}
       <AnimatePresence>
         {uploadResult && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="card" style={{ borderColor: "var(--color-success)" }}>
+            className="card" style={{ borderColor: "var(--color-success)", marginTop: uploadFiles.length > 0 ? 0 : 16 }}>
             <div className="heading-section" style={{ fontSize: 20, color: "var(--color-success)", marginBottom: 12 }}>
               Ingestion complete
             </div>

@@ -64,6 +64,20 @@ export async function checkHealth() {
   }
 }
 
+// ─── GET /documents (protected) ───────────────────────────────
+
+export async function fetchDocuments(getToken) {
+  try {
+    const res = await fetch(`${BASE_URL}/documents`, {
+      headers: await authHeaders(getToken),
+      signal: AbortSignal.timeout(5_000),
+    });
+    return await handleResponse(res);
+  } catch {
+    return { documents: [] };
+  }
+}
+
 // ─── GET /status (public) ─────────────────────────────────────
 
 export async function checkStatus(userId) {

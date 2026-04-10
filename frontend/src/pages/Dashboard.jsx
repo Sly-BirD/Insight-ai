@@ -68,7 +68,7 @@ function TrendChart({ dailyCounts }) {
     <div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120, marginBottom: 12 }}>
         {dailyCounts.map((d, i) => (
-          <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, alignItems: "center" }}>
+          <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", gap: 2, alignItems: "center", height: "100%" }}>
             <motion.div
               initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: 0.3 + i * 0.04 }}
               style={{

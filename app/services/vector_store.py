@@ -17,7 +17,7 @@ from loguru import logger
 from app.core.config import settings
 
 _weaviate_client: Optional[weaviate.WeaviateClient] = None
-TOP_K = 7
+TOP_K = 15
 
 def get_weaviate_client() -> weaviate.WeaviateClient:
     """Singleton pattern for Weaviate Client."""

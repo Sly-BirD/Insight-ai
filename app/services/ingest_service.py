@@ -7,6 +7,7 @@ Encapsulates PDF parsing, segmenting, and vector indexing into Weaviate.
 import hashlib
 import json
 import os
+import concurrent.futures
 from pathlib import Path
 from loguru import logger
 from typing import List, Dict
@@ -58,23 +59,22 @@ def load_documents(data_dir: str, user_id: str = "shared") -> dict:
     if not pdf_files:
         return {"documents": [], "files_count": 0}
 
-    reader = UnstructuredReader()
     all_documents = []
     processed_count = 0
     errors = []
 
-    for pdf_path in pdf_files:
-        filename = pdf_path.name
-        file_hash = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+    def _parse(path):
+        filename = path.name
+        fhash = hashlib.sha256(path.read_bytes()).hexdigest()
         
-        if is_cached(user_id, file_hash):
+        if is_cached(user_id, fhash):
             logger.info(f"Skipping heavily parsed file (already cached): {filename}")
-            processed_count += 1
-            continue
+            return {"status": "cached", "hash": fhash, "name": filename}
 
         try:
+            reader = UnstructuredReader()
             docs = reader.load_data(
-                file=pdf_path,
+                file=path,
                 unstructured_kwargs={
                     "strategy": UNSTRUCTURED_STRATEGY,
                     "languages": ["eng"],
@@ -83,24 +83,34 @@ def load_documents(data_dir: str, user_id: str = "shared") -> dict:
                 extra_info={"filename": filename},
             )
             if not docs:
-                continue
+                return {"status": "empty"}
 
             insurer = extract_insurer(filename)
             for doc in docs:
-                doc.metadata["file_hash"] = file_hash
+                doc.metadata["file_hash"] = fhash
                 doc.metadata.setdefault("filename", filename)
                 doc.metadata.setdefault("insurer", insurer)
                 doc.metadata.setdefault("page_label", str(doc.metadata.get("page_number", "unknown")))
                 for key in ["filetype", "languages", "orig_elements"]:
                     doc.metadata.pop(key, None)
 
-            all_documents.extend(docs)
-            add_to_cache(user_id, file_hash, filename)
-            processed_count += 1
+            return {"status": "parsed", "hash": fhash, "name": filename, "docs": docs}
         except Exception as exc:
-            logger.error(f"Failed to load '{filename}': {exc}")
-            errors.append(f"{filename} error: {exc}")
-            continue
+            return {"status": "error", "name": filename, "error": str(exc)}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(_parse, p) for p in pdf_files]
+        for future in concurrent.futures.as_completed(futures):
+            res = future.result()
+            if res["status"] == "cached":
+                processed_count += 1
+            elif res["status"] == "parsed":
+                all_documents.extend(res["docs"])
+                add_to_cache(user_id, res["hash"], res["name"])
+                processed_count += 1
+            elif res["status"] == "error":
+                logger.error(f"Failed to load '{res['name']}': {res['error']}")
+                errors.append(f"{res['name']} error: {res['error']}")
 
     return {"documents": all_documents, "files_count": processed_count, "errors": errors}
 

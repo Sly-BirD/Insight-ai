@@ -69,18 +69,19 @@ def compare_policies(pdf_a_path: Path, pdf_a_name: str, pdf_b_path: Path, pdf_b_
 
     llm = init_llm()
 
-    system_prompt = f"""You are an expert Indian health insurance policy analyst.
+    system_prompt = f"""You are an expert Indian health insurance policy analyst. Compare the provided documents deeply and thoroughly.
 Documents: Set A ({insurer_a}), Set B ({insurer_b}).
 Fields:
 {COMPARISON_FIELDS}
 
+Analyze exact differences, provide precise details, and highlight major financial or coverage gaps.
 Respond with ONLY valid JSON:
 {{
   "rows": [
-    {{"field": "aspect", "value_a": "valA", "value_b": "valB", "changed": true|false, "category": "General", "note": ""}}
+    {{"field": "aspect", "value_a": "Exact detailed value in A", "value_b": "Exact detailed value in B", "changed": true|false, "category": "General", "note": "Clear explanation of the difference and its impact"}}
   ],
-  "summary": "2 sentences",
-  "key_changes": ["change 1"]
+  "summary": "Provide a comprehensive 3-4 sentence summary of the exact major differences between these two policies, specifically highlighting which is better for which scenario.",
+  "key_changes": ["Detailed, precise change 1", "Detailed, precise change 2"]
 }}"""
 
     user_prompt = f"DOCUMENT A:\n{text_a}\n\nDOCUMENT B:\n{text_b}\n\nProcess exact JSON."

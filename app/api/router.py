@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List
 from collections import defaultdict
 from fastapi import APIRouter, File, HTTPException, UploadFile, Depends
+import json
 from loguru import logger
 
 from app.core.config import settings
@@ -21,7 +22,7 @@ from app.schemas.api_models import (
     DecisionBreakdown, DailyCount
 )
 from app.services.vector_store import get_node_count, collection_name_for_user
-from app.services.ingest_service import ingest_docs
+from app.services.ingest_service import ingest_docs, get_cache_path
 from app.services.query_service import run_query
 from app.services.compare_service import compare_policies
 
@@ -138,6 +139,21 @@ async def analytics(_claims: dict = Depends(require_auth)):
         db_analytics["recent_queries"] = recent
         return db_analytics
     return _build_analytics()
+
+@router.get("/documents", tags=["Workspace"])
+async def list_documents(_claims: dict = Depends(require_auth)):
+    user_id = get_user_id(_claims)
+    path = get_cache_path(user_id)
+    if not path.exists():
+        return {"documents": []}
+    
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        docs = list(set(data.values()))
+        return {"documents": sorted(docs)}
+    except Exception as exc:
+        logger.error(f"[router] Failed to read dedup cache for user {user_id}: {exc}")
+        return {"documents": []}
 
 @router.get("/history", tags=["Analytics"])
 async def history_endpoint(limit: int = 50, _claims: dict = Depends(require_auth)):

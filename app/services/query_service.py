@@ -48,7 +48,7 @@ def node_grade_relevance(state: RAGState) -> RAGState:
     if not chunks:
         return {**state, "relevance": RelevanceGrade(relevant=False, score=0, reason="No chunks.")}
 
-    context = chunks_to_context(chunks[:3])
+    context = chunks_to_context(chunks[:5])
     system_prompt = "Grade relevance 0-10. JSON: {\"relevant\": bool, \"score\": int, \"reason\": \"str\"}. score>=7 is true."
     llm = init_llm()
     try:
@@ -69,7 +69,11 @@ def node_rewrite_query(state: RAGState) -> RAGState:
 
 def node_generate_answer(state: RAGState) -> RAGState:
     context = chunks_to_context(state["retrieved_chunks"])
-    sys = """InsightAI. Decide: approve|reject|partial|informational. Need JSON: { "decision": "...", "justification": "...", "clauses": ["..."], "conditions": ["..."], "summary": "...", "confidence": int }"""
+    sys = """You are InsightAI, an expert Indian Health Insurance Assistant. Answer the user's question directly, comprehensively, and with precise details based ONLY on the provided [SOURCE] documents.
+CRITICAL RULE: You MUST explicitly mention the exact document filename(s) you referenced in both your justification and summary (e.g. 'According to Star_Health_Policy.pdf...').
+If the context does not contain the answer, say so clearly.
+Make a decision: approve | reject | partial | informational.
+Output strictly valid JSON: { "decision": "...", "justification": "Detailed, precise explanation citing the exact source filename...", "clauses": ["Exact quoted clause text..."], "conditions": ["Relevant condition..."], "summary": "Clear one-sentence summary mentioning the file name...", "confidence": int_0_to_100 }"""
     llm = init_llm()
     try:
         resp = llm.invoke([SystemMessage(content=sys), HumanMessage(content=f"Q:{state['query']}\n\nSRC:{context}")])
@@ -86,7 +90,7 @@ def node_audit_answer(state: RAGState) -> RAGState:
         audit = AuditResult(score=0, flags=["None"], summary="Fail")
         return {**state, "audit": audit, "final_response": _build_final_response(state, audit)}
     
-    context = chunks_to_context(state["retrieved_chunks"][:5])
+    context = chunks_to_context(state["retrieved_chunks"][:10])
     sys = "Audit the answer against sources. JSON: {\"score\": int, \"flags\": [], \"summary\": \"\"}"
     llm = init_llm()
     try:
