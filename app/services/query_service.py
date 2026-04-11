@@ -9,7 +9,7 @@ from typing_extensions import TypedDict
 from loguru import logger
 import json
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, END
 
 from app.schemas.domain import RelevanceGrade, InsuranceAnswer, AuditResult
@@ -31,6 +31,7 @@ class RAGState(TypedDict):
     final_response:   Optional[Dict[str, Any]]
     error:            Optional[str]
     user_id:          str
+    history:          List[Dict[str, str]]
 
 def node_retrieve(state: RAGState) -> RAGState:
     query = state["current_query"]
@@ -60,9 +61,17 @@ def node_grade_relevance(state: RAGState) -> RAGState:
 
 def node_rewrite_query(state: RAGState) -> RAGState:
     original, current, c = state["query"], state["current_query"], state["rewrite_count"]
+    hist = []
+    for m in state.get("history", []):
+        role_label = "User" if m["role"] == "user" else "Assistant"
+        hist.append(f"{role_label}: {m['content']}")
+    history_ctx = "\n".join(hist)
+    
     llm = init_llm()
     try:
-        resp = llm.invoke([SystemMessage(content="Rewrite query with precise insurance terms. Output ONLY the query."), HumanMessage(content=f"Origin: {original}\nCurr: {current}")])
+        sys = "Rewrite the user's latest query to be standalone taking the chat history into account. Output ONLY the rewritten query."
+        prompt = f"Chat History:\n{history_ctx}\n\nOriginal Query: {original}\nCurrent Query: {current}"
+        resp = llm.invoke([SystemMessage(content=sys), HumanMessage(content=prompt)])
         return {**state, "current_query": resp.content.strip().strip('"\''), "rewrite_count": c + 1}
     except Exception:
         return {**state, "current_query": original, "rewrite_count": c + 1}
@@ -76,7 +85,15 @@ Make a decision: approve | reject | partial | informational.
 Output strictly valid JSON: { "decision": "...", "justification": "Detailed, precise explanation citing the exact source filename...", "clauses": ["Exact quoted clause text..."], "conditions": ["Relevant condition..."], "summary": "Clear one-sentence summary mentioning the file name...", "confidence": int_0_to_100 }"""
     llm = init_llm()
     try:
-        resp = llm.invoke([SystemMessage(content=sys), HumanMessage(content=f"Q:{state['query']}\n\nSRC:{context}")])
+        messages = [SystemMessage(content=sys)]
+        for m in state.get("history", []):
+            if m["role"] == "user":
+                messages.append(HumanMessage(content=m["content"]))
+            elif m["role"] == "assistant":
+                messages.append(AIMessage(content=m["content"]))
+        messages.append(HumanMessage(content=f"Q:{state['query']}\n\nSRC:{context}"))
+        
+        resp = llm.invoke(messages)
         data = parse_llm_json(resp.content)
         data.setdefault("conditions", [])
         data.setdefault("summary", "")
@@ -135,10 +152,11 @@ def build_graph():
     g.add_conditional_edges("grade_relevance", route_after_grading, {"generate_answer": "generate_answer", "rewrite_query": "rewrite_query"})
     return g.compile()
 
-def run_query(user_query: str, user_id: str = "shared") -> Dict[str, Any]:
+def run_query(user_query: str, history: List[Dict[str, str]] = None, user_id: str = "shared") -> Dict[str, Any]:
     initial_state: RAGState = {
         "query": user_query, "current_query": user_query, "rewrite_count": 0, "retrieved_chunks": [],
-        "relevance": None, "answer": None, "raw_answer_text": "", "audit": None, "final_response": None, "error": None, "user_id": user_id
+        "relevance": None, "answer": None, "raw_answer_text": "", "audit": None, "final_response": None, "error": None, "user_id": user_id,
+        "history": history or []
     }
     graph = build_graph()
     result = graph.invoke(initial_state)

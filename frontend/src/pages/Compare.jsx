@@ -198,6 +198,36 @@ export default function CompareModule() {
     setFileA(null); setFileB(null); setResult(null); setError(null);
   };
 
+  const handleExportCSV = () => {
+    if (!result || !result.rows) return;
+    
+    const headers = ["Category", "Field", `Policy A (${result.doc_a_name})`, `Policy B (${result.doc_b_name})`, "Status"];
+    
+    // Helper to safely encapsulate strings in quotes and escape internal quotes for CSV
+    const esc = (str) => `"${(str || "").replace(/"/g, '""')}"`;
+    
+    const csvRows = result.rows.map(r => {
+      const cat = esc(r.category || "General");
+      const field = esc(r.field);
+      const valA = esc(r.value_a);
+      const valB = esc(r.value_b);
+      const status = esc(r.changed ? "Changed" : "Identical");
+      return [cat, field, valA, valB, status].join(",");
+    });
+    
+    const csvContent = headers.map(esc).join(",") + "\n" + csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Comparison_Report_${result.doc_a_name}_vs_${result.doc_b_name}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 0 100px" }}>
 
@@ -216,6 +246,13 @@ export default function CompareModule() {
 
         {(result || error) && (
           <button className="btn btn-ghost" onClick={handleReset}>Reset</button>
+        )}
+
+        {result && (
+          <button className="btn btn-ghost" onClick={handleExportCSV} style={{ display: "flex", gap: 8, alignItems: "center", border: "1px solid var(--color-border-strong)" }}>
+            <span style={{ fontSize: 16 }}>⬇</span>
+            <span>Download CSV Report</span>
+          </button>
         )}
 
         {!fileA && !fileB && <span className="text-small">Upload two policy PDFs to compare them</span>}

@@ -250,6 +250,22 @@ def get_user_queries(user_id: str, limit: int = 50) -> list[dict]:
         return []
 
 
+def clear_user_queries(user_id: str) -> bool:
+    """Delete all query history for a user."""
+    db = get_supabase()
+    if not db:
+        return False
+    try:
+        db.table("query_history").delete().eq(
+            "user_id_hash", _hash_user_id(user_id)
+        ).execute()
+        logger.info(f"[db] Cleared query history for user {user_id[:8]}…")
+        return True
+    except Exception as exc:
+        logger.error(f"[db] Failed to clear queries: {exc}")
+        return False
+
+
 def get_user_analytics(user_id: str) -> dict:
     """
     Compute dashboard analytics from plaintext fields only —

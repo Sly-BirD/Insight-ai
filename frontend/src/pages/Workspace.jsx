@@ -291,200 +291,313 @@ function UploadPanel() {
   );
 }
 
-// ─── QUERY PANEL ──────────────────────────────────────────────
-function QueryPanel() {
+function QueryPanel({ messages, setMessages }) {
   const { getToken } = useAuth();
   const { hasDocuments, documentCount, addQuery } = useContext(AppContext);
 
   const [question, setQuestion] = useState("");
   const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
-  const [error,    setError]    = useState(null);
   const { show, Toast } = useToast();
   const textareaRef = useRef(null);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
 
   const handleSubmit = async () => {
-    if (!question.trim() || loading) return;
+    const currentQ = question.trim();
+    if (!currentQ || loading) return;
+    
+    const userMsg = { role: "user", content: currentQ };
+    setMessages(prev => [...prev, userMsg]);
+    setQuestion("");
     setLoading(true);
-    setResult(null);
-    setError(null);
 
     try {
-      const data = await runQuery(question, getToken);
-      setResult(data);
-      addQuery?.(question, data);
+      const historyPayload = messages
+        .filter(m => !m.isError)
+        .map(m => ({ role: m.role, content: m.content }));
+        
+      const data = await runQuery(currentQ, historyPayload, getToken);
+      setMessages(prev => [...prev, { role: "assistant", content: data.answer?.summary || "Evaluated.", data }]);
+      addQuery?.(currentQ, data);
       show("Query complete", "success");
     } catch (err) {
-      setError(err.message);
+      setMessages(prev => [...prev, { role: "assistant", content: err.message, isError: true }]);
       show(err.message, "error");
     } finally {
       setLoading(false);
+      setTimeout(() => textareaRef.current?.focus(), 100);
     }
   };
 
-  const meta      = dm(result?.answer?.decision);
-  const auditScore = result?.audit?.score ?? null;
   const indexEmpty = hasDocuments === false;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, height: "100%", maxHeight: "80vh" }}>
       <Toast />
 
-      {/* Empty index notice */}
-      <AnimatePresence>
-        {indexEmpty && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="card-subtle" style={{ borderColor: "var(--color-warning)" }}>
-            <div className="heading-section" style={{ fontSize: 18, color: "var(--color-warning)", marginBottom: 4 }}>
-              No documents indexed
-            </div>
-            <div className="text-body" style={{ margin: 0 }}>
-              Upload at least one PDF using the panel on the left before querying.
+      {/* Header Info */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <AnimatePresence>
+          {indexEmpty && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="card-subtle" style={{ borderColor: "var(--color-warning)", padding: "12px", flex: 1 }}>
+              <div className="heading-section" style={{ fontSize: 16, color: "var(--color-warning)" }}>
+                ⚠ No documents indexed
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {hasDocuments && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-success)" }} />
+            <span className="text-small">{documentCount.toLocaleString()} nodes indexed</span>
+          </div>
+        )}
+      </div>
+
+      {/* Chat Messages Area */}
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 16, paddingRight: 4 }}>
+        {messages.length === 0 && !loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="text-small" style={{ marginBottom: 12 }}>Suggested Questions</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {EXAMPLES.map(q => (
+                <button key={q} onClick={() => { setQuestion(q); textareaRef.current?.focus(); }}
+                  className="card-subtle"
+                  style={{ textAlign: "left", cursor: "pointer", transition: "all var(--transition-fast)" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--color-border-strong)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--color-border-subtle)"}>
+                  <span className="text-body" style={{ margin: 0, pointerEvents: "none" }}>{q}</span>
+                </button>
+              ))}
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
 
-      {/* Index status */}
-      {hasDocuments && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-success)" }} />
-          <span className="text-small">
-            {documentCount.toLocaleString()} nodes indexed — ready to query
-          </span>
-        </div>
-      )}
+        {messages.map((msg, i) => {
+          if (msg.role === "user") {
+            return (
+              <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                style={{ alignSelf: "flex-end", maxWidth: "80%", background: "var(--color-border)", padding: "12px 16px", borderRadius: "16px 16px 0 16px", color: "var(--color-text-primary)" }}>
+                <div className="text-body" style={{ margin: 0 }}>{msg.content}</div>
+              </motion.div>
+            );
+          }
 
-      {/* Textarea */}
-      <div className="card" style={{ padding: "8px" }}>
+          if (msg.isError) {
+            return (
+              <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card" style={{ borderColor: "var(--color-error)", alignSelf: "flex-start", maxWidth: "90%" }}>
+                <div className="heading-section" style={{ fontSize: 16, color: "var(--color-error)", marginBottom: 8 }}>Error</div>
+                <div className="text-body" style={{ margin: 0 }}>{msg.content}</div>
+              </motion.div>
+            );
+          }
+
+          const res = msg.data;
+          const meta = dm(res?.answer?.decision);
+          const auditScore = res?.audit?.score ?? null;
+
+          return (
+            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ alignSelf: "flex-start", width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="card-elevated" style={{ borderColor: meta.color }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ fontSize: 24, color: meta.color }}>{meta.icon}</div>
+                    <div className="heading-section" style={{ fontSize: 20, color: meta.color }}>{meta.label}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="text-small">{res.answer?.confidence}% confidence</div>
+                    {auditScore !== null && (
+                      <div className="text-small" style={{ color: auditScore >= 85 ? "var(--color-success)" : "var(--color-warning)" }}>
+                        Audit: {auditScore}/100
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-body" style={{ fontSize: 16 }}>{res.answer?.justification}</div>
+              </div>
+
+              {res.answer?.clauses?.length > 0 && (
+                <div>
+                  <div className="text-small" style={{ marginBottom: 8 }}>Supporting Context</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {res.answer.clauses.map((c, idx) => (
+                      <div key={idx} className="card-subtle" style={{ padding: "8px 12px" }}>
+                        <div className="text-body" style={{ margin: 0, fontSize: 14 }}>{c}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
+
+        {loading && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ alignSelf: "flex-start", padding: "12px 16px", background: "var(--color-bg-subtle)", borderRadius: "0 16px 16px 16px", color: "var(--color-text-muted)" }}>
+            <div className="text-body" style={{ margin: 0, fontStyle: "italic" }}>Retrieving knowledge...</div>
+          </motion.div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input box pinned to bottom */}
+      <div className="card" style={{ padding: "8px", marginTop: "auto", flexShrink: 0 }}>
         <textarea
           ref={textareaRef}
           value={question}
           onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleSubmit(); }}
+          onKeyDown={e => { if ((e.ctrlKey || e.metaKey || e.key === "Enter") && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
           disabled={loading}
-          rows={3}
-          placeholder={indexEmpty ? "Upload documents first…" : "Ask anything about a policy… (⌘ Enter)"}
+          rows={2}
+          placeholder={indexEmpty ? "Upload documents first…" : "Ask a follow-up question… (Enter)"}
           style={{
-            width: "100%", padding: "12px", border: "none", resize: "vertical",
+            width: "100%", padding: "12px", border: "none", resize: "none",
             background: "transparent", color: "var(--color-text-primary)",
             fontFamily: "var(--font-sans)", fontSize: 16, outline: "none",
             opacity: loading ? 0.6 : 1,
           }}
         />
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px" }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleSubmit}
-            disabled={loading || !question.trim()}
-          >
-            {loading ? "Analysing…" : "Run Query →"}
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 8px 8px" }}>
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={loading || !question.trim()}>
+            {loading ? "Thinking…" : "Send →"}
           </button>
         </div>
       </div>
-
-      {/* Example queries */}
-      {!result && !loading && !error && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
-          <div className="text-small" style={{ marginBottom: 12 }}>Suggested Questions</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {EXAMPLES.map(q => (
-              <button key={q} onClick={() => { setQuestion(q); textareaRef.current?.focus(); }}
-                className="card-subtle"
-                style={{ textAlign: "left", cursor: "pointer", transition: "all var(--transition-fast)", border: "1px solid var(--color-border-subtle)" }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "var(--color-border-strong)"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "var(--color-border-subtle)"}>
-                <span className="text-body" style={{ margin: 0, pointerEvents: "none" }}>{q}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Loading */}
-      <AnimatePresence mode="wait">
-        {loading && (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ textAlign: "center", padding: "40px 0" }}>
-            <div className="text-body">Analysing policy structure & retrieving nodes...</div>
-          </motion.div>
-        )}
-
-        {/* Error */}
-        {error && !loading && (
-          <motion.div key="error" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card" style={{ borderColor: "var(--color-error)" }}>
-            <div className="heading-section" style={{ fontSize: 20, color: "var(--color-error)", marginBottom: 8 }}>Error</div>
-            <div className="text-body" style={{ margin: 0 }}>{error}</div>
-          </motion.div>
-        )}
-
-        {/* Result */}
-        {result && !loading && (
-          <motion.div key="result" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {/* Decision card */}
-            <div className="card-elevated" style={{ borderColor: meta.color }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ fontSize: 24, color: meta.color }}>{meta.icon}</div>
-                  <div className="heading-section" style={{ fontSize: 24, color: meta.color }}>{meta.label}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div className="text-small">{result.answer?.confidence}% confidence</div>
-                  {auditScore !== null && (
-                    <div className="text-small" style={{ color: auditScore >= 85 ? "var(--color-success)" : "var(--color-warning)" }}>
-                      Audit Score: {auditScore}/100
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="text-body" style={{ fontSize: 16, color: "var(--color-text-primary)" }}>
-                {result.answer?.justification}
-              </div>
-            </div>
-
-            {/* Clauses */}
-            {result.answer?.clauses?.length > 0 && (
-              <div>
-                <div className="text-small" style={{ marginBottom: 12 }}>Supporting Clauses</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {result.answer.clauses.map((c, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className="card-subtle">
-                      <div className="text-body" style={{ margin: 0 }}>{c}</div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Audit flags */}
-            {result.audit?.flags?.length > 0 && (
-              <div className="card-subtle" style={{ borderColor: "var(--color-warning)" }}>
-                <div className="text-small" style={{ color: "var(--color-warning)", marginBottom: 8 }}>Audit Flags raised</div>
-                {result.audit.flags.map((flag, i) => (
-                  <div key={i} className="text-body" style={{ margin: "0 0 4px" }}>⚠ {flag}</div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
 
 // ─── WORKSPACE ────────────────────────────────────────────────
 export default function WorkspaceModule() {
+  const [sessions, setSessions] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("insight_sessions"));
+      return Array.isArray(stored) && stored.length > 0 ? stored : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    return sessions.length > 0 ? sessions[0].id : "default";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("insight_sessions", JSON.stringify(sessions));
+  }, [sessions]);
+
+  useEffect(() => {
+    if (sessions.length === 0) {
+      const newSession = { id: Date.now().toString(), title: "New Chat", messages: [] };
+      setSessions([newSession]);
+      setActiveSessionId(newSession.id);
+    }
+  }, [sessions.length]);
+
+  const activeSession = sessions.find(s => s.id === activeSessionId) || { id: "default", title: "New Chat", messages: [] };
+
+  const handleNewChat = () => {
+    const newSession = { id: Date.now().toString(), title: "New Chat", messages: [] };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+  };
+
+  const handleDeleteChat = (e, sessionId) => {
+    e.stopPropagation();
+    setSessions(prev => {
+      const filtered = prev.filter(s => s.id !== sessionId);
+      if (filtered.length === 0) {
+        const fresh = { id: Date.now().toString(), title: "New Chat", messages: [] };
+        setActiveSessionId(fresh.id);
+        return [fresh];
+      }
+      if (sessionId === activeSessionId) {
+        setActiveSessionId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
+  const updateActiveSession = (newMessagesSetAction) => {
+    setSessions(prev => prev.map(s => {
+      if (s.id === activeSessionId) {
+        const newMessages = typeof newMessagesSetAction === "function" ? newMessagesSetAction(s.messages) : newMessagesSetAction;
+        let newTitle = s.title;
+        if (s.title === "New Chat" && newMessages.length > 0 && newMessages[0].role === "user") {
+          newTitle = newMessages[0].content.slice(0, 25) + (newMessages[0].content.length > 25 ? "..." : "");
+        }
+        return { ...s, messages: newMessages, title: newTitle };
+      }
+      return s;
+    }));
+  };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 5fr) minmax(0, 8fr)", gap: 32, maxWidth: 1200, margin: "0 auto", padding: "0 0 100px", alignItems: "start" }}>
-      {/* Left: Upload */}
-      <div className="card" style={{ position: "sticky", top: 88 }}>
-        <div className="heading-section" style={{ fontSize: 24, marginBottom: 24 }}>Documents</div>
-        <UploadPanel />
+    <div style={{ display: "grid", gridTemplateColumns: "320px minmax(0, 8fr)", gap: 32, maxWidth: 1300, margin: "0 auto", padding: "0 0 100px", alignItems: "start" }}>
+      {/* Left Base: Chat History + Upload */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 32, position: "sticky", top: 88 }}>
+        
+        {/* Chat Sessions History Panel */}
+        <div className="card" style={{ padding: "16px 16px 24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div className="heading-section" style={{ fontSize: 18 }}>Chat History</div>
+            <button className="btn btn-ghost" onClick={handleNewChat} style={{ padding: "4px 8px", fontSize: 13, border: "1px solid var(--color-border-strong)" }}>
+              + New
+            </button>
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "35vh", overflowY: "auto", paddingRight: 4 }}>
+            {sessions.map(s => (
+              <div key={s.id} onClick={() => setActiveSessionId(s.id)}
+                className="card-subtle"
+                style={{
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  transition: "all var(--transition-fast)",
+                  borderColor: s.id === activeSessionId ? "var(--color-text-primary)" : "transparent",
+                  backgroundColor: s.id === activeSessionId ? "var(--color-bg-subtle)" : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                }}
+              >
+                <div className="text-body" style={{ margin: 0, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, color: s.id === activeSessionId ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
+                  {s.title}
+                </div>
+                <button
+                  onClick={(e) => handleDeleteChat(e, s.id)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer", padding: "2px 6px",
+                    fontSize: 14, color: "var(--color-text-muted)", borderRadius: 4,
+                    opacity: 0.5, transition: "all var(--transition-fast)", flexShrink: 0,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = "var(--color-error)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = "0.5"; e.currentTarget.style.color = "var(--color-text-muted)"; }}
+                  title="Delete chat"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Upload Panel */}
+        <div className="card" style={{ padding: "16px" }}>
+          <div className="heading-section" style={{ fontSize: 18, marginBottom: 16 }}>Documents</div>
+          <UploadPanel />
+        </div>
       </div>
 
-      {/* Right: Query */}
-      <div className="card" style={{ padding: "32px 24px" }}>
-        <div className="heading-section" style={{ fontSize: 24, marginBottom: 24 }}>Query Engine</div>
-        <QueryPanel />
+      {/* Right: Query Engine Window */}
+      <div className="card" style={{ padding: "24px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div className="heading-section" style={{ fontSize: 22 }}>Query Engine</div>
+          <div className="text-small" style={{ color: "var(--color-text-muted)" }}>{activeSession.title}</div>
+        </div>
+        <QueryPanel messages={activeSession.messages} setMessages={updateActiveSession} />
       </div>
     </div>
   );

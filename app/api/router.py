@@ -161,6 +161,54 @@ async def history_endpoint(limit: int = 50, _claims: dict = Depends(require_auth
     rows = db.get_user_queries(user_id, limit=min(limit, 200))
     return {"queries": rows, "count": len(rows)}
 
+@router.delete("/documents/{doc_name}", tags=["Workspace"])
+async def delete_document(doc_name: str, _claims: dict = Depends(require_auth)):
+    """Remove a specific document from the user's dedup cache."""
+    user_id = get_user_id(_claims)
+    path = get_cache_path(user_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="No documents found.")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        keys_to_remove = [k for k, v in data.items() if v == doc_name]
+        if not keys_to_remove:
+            raise HTTPException(status_code=404, detail=f"Document '{doc_name}' not found.")
+        for k in keys_to_remove:
+            del data[k]
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return {"status": "deleted", "document": doc_name, "remaining": len(set(data.values()))}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+@router.delete("/documents", tags=["Workspace"])
+async def delete_all_documents(_claims: dict = Depends(require_auth)):
+    """Clear all documents from the user's Weaviate collection and dedup cache."""
+    from app.services.vector_store import collection_name_for_user, get_weaviate_client
+    user_id = get_user_id(_claims)
+    col_name = collection_name_for_user(user_id)
+    try:
+        client = get_weaviate_client()
+        if client.collections.exists(col_name):
+            client.collections.delete(col_name)
+            logger.info(f"[router] Deleted Weaviate collection {col_name}")
+    except Exception as exc:
+        logger.error(f"[router] Failed to delete collection: {exc}")
+
+    path = get_cache_path(user_id)
+    if path.exists():
+        path.unlink()
+
+    return {"status": "cleared", "message": "All documents removed."}
+
+@router.delete("/history", tags=["Analytics"])
+async def clear_history(_claims: dict = Depends(require_auth)):
+    """Clear query history for the user."""
+    user_id = get_user_id(_claims)
+    cleared = db.clear_user_queries(user_id)
+    return {"status": "cleared" if cleared else "no_action", "message": "Query history cleared."}
+
 @router.post("/ingest", response_model=IngestResponse, tags=["Ingestion"])
 async def ingest_endpoint(files: List[UploadFile] = File(...), _claims: dict = Depends(require_auth)):
     start = time.perf_counter()
@@ -218,7 +266,8 @@ async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_
     start = time.perf_counter()
 
     try:
-        raw = run_query(q, user_id=user_id)
+        hist_dicts = [m.model_dump() for m in request.history]
+        raw = run_query(q, history=hist_dicts, user_id=user_id)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

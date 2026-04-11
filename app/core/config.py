@@ -20,6 +20,7 @@ class Settings:
     # Models
     EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "BAAI/bge-base-en-v1.5")
     LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "llama-3.3-70b-versatile")
+    LLM_FALLBACK_MODEL = os.getenv("LLM_FALLBACK_MODEL", "llama-3.3-70b-versatile")
     
     # Storage Paths
     BASE_DIR = Path(__file__).parent.parent.parent
@@ -35,3 +36,5 @@ class Settings:
     GROQ_API_KEY_FALLBACK = os.getenv("GROQ_API_KEY_FALLBACK", "")
 
 settings = Settings()
+
+# Forced reload for .env

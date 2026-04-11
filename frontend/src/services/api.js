@@ -104,7 +104,7 @@ export async function fetchAnalytics(getToken) {
 
 // ─── POST /query (protected) ─────────────────────────────────
 
-export async function runQuery(question, getToken) {
+export async function runQuery(question, history = [], getToken) {
   if (!question?.trim()) throw new Error("Question must not be empty.");
   const res = await fetch(`${BASE_URL}/query`, {
     method: "POST",
@@ -112,7 +112,7 @@ export async function runQuery(question, getToken) {
       "Content-Type": "application/json",
       ...(await authHeaders(getToken)),
     },
-    body: JSON.stringify({ question: question.trim() }),
+    body: JSON.stringify({ question: question.trim(), history }),
     signal: AbortSignal.timeout(120_000),
   });
   return handleResponse(res);
@@ -144,6 +144,39 @@ export async function compareFiles(fileA, fileB, getToken) {
     headers: await authHeaders(getToken),
     body: form,
     signal: AbortSignal.timeout(120_000),
+  });
+  return handleResponse(res);
+}
+
+// ─── DELETE /documents/:name (protected) ─────────────────────
+
+export async function deleteDocument(docName, getToken) {
+  const res = await fetch(`${BASE_URL}/documents/${encodeURIComponent(docName)}`, {
+    method: "DELETE",
+    headers: await authHeaders(getToken),
+    signal: AbortSignal.timeout(10_000),
+  });
+  return handleResponse(res);
+}
+
+// ─── DELETE /documents (protected) ───────────────────────────
+
+export async function deleteAllDocuments(getToken) {
+  const res = await fetch(`${BASE_URL}/documents`, {
+    method: "DELETE",
+    headers: await authHeaders(getToken),
+    signal: AbortSignal.timeout(15_000),
+  });
+  return handleResponse(res);
+}
+
+// ─── DELETE /history (protected) ─────────────────────────────
+
+export async function clearHistory(getToken) {
+  const res = await fetch(`${BASE_URL}/history`, {
+    method: "DELETE",
+    headers: await authHeaders(getToken),
+    signal: AbortSignal.timeout(10_000),
   });
   return handleResponse(res);
 }

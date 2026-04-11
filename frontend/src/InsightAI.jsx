@@ -30,6 +30,7 @@ import WorkspaceModule from "./pages/Workspace.jsx";
 import DashboardModule from "./pages/Dashboard.jsx";
 import AuditModule from "./pages/Audit.jsx";
 import CompareModule from "./pages/Compare.jsx";
+import SettingsModule from "./pages/Settings.jsx";
 
 // ─── Context ──────────────────────────────────────────────────
 import { AppProvider, useApp } from "./context/AppContext.jsx";
@@ -40,6 +41,7 @@ const MODULE_MAP = {
   workspace: WorkspaceModule,
   compare:   CompareModule,
   audit:     AuditModule,
+  settings:  SettingsModule,
 };
 
 const BENTO_CARDS = [
@@ -47,6 +49,7 @@ const BENTO_CARDS = [
   { id: "workspace", label: "Workspace", icon: "⌖", desc: "Upload policies and ask questions — all in one place." },
   { id: "compare",   label: "Compare",   icon: "⇄", desc: "See exactly what changed between two policy versions" },
   { id: "audit",     label: "Audit Log", icon: "≡", desc: "A secure log of all your previous searches and uploads." },
+  { id: "settings",  label: "Settings",  icon: "⚙", desc: "Configure your workspace, manage documents, and system preferences." },
 ];
 
 // ─── Module wrapper ───────────────────────────────────────────

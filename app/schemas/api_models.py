@@ -60,8 +60,13 @@ class IngestResponse(BaseModel):
 # ---------------------------------------------------------
 # Query Endpoints
 # ---------------------------------------------------------
+class Message(BaseModel):
+    role: str
+    content: str
+
 class QueryRequest(BaseModel):
-    question: str = Field(..., min_length=5, max_length=1000)
+    question: str = Field(..., min_length=2, max_length=1000)
+    history: List[Message] = []
 
 class AuditInfo(BaseModel):
     score:   int

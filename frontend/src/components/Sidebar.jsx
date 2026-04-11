@@ -46,10 +46,21 @@ export default function Sidebar({ activeSection, setSection }) {
           <div className="sidebar-divider" />
 
           <motion.button
-            onClick={() => setSection("home")}
+            onClick={() => setSection("settings")}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: NAV_ITEMS.length * 0.05 }}
+            className={`sidebar-item${activeSection === "settings" ? " active" : ""}`}
+          >
+            <span className="sidebar-item-icon">⚙</span>
+            <span>Settings</span>
+          </motion.button>
+
+          <motion.button
+            onClick={() => setSection("home")}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: (NAV_ITEMS.length + 1) * 0.05 }}
             className="sidebar-item"
           >
             <span className="sidebar-item-icon">⌂</span>
