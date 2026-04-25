@@ -8,7 +8,7 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Deploy to Render
         run: |
@@ -17,9 +17,9 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - run: cd frontend && npm install && npm run build
+          node-version: '22'
+      - run: cd frontend && npm install --legacy-peer-deps && npm run build
       # Vercel handles actual deployment automatically via GitHub integration
