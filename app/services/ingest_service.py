@@ -20,7 +20,7 @@ from llama_index.vector_stores.weaviate import WeaviateVectorStore
 
 from app.core.config import settings
 from app.utils.text_helpers import extract_insurer, extract_section_title, extract_clause_ref
-from app.services.vector_store import get_weaviate_client, collection_name_for_user
+from app.services.vector_store import get_weaviate_client, collection_name_for_user, _get_embed_model
 
 CHUNK_SIZE = 512
 CHUNK_OVERLAP = 128
@@ -124,7 +124,13 @@ def build_nodes(documents: List[Document]) -> List[TextNode]:
     )
     nodes = splitter.get_nodes_from_documents(documents)
     
-    for node in nodes:
+    # Pre-compute embeddings in batch before metadata extraction
+    texts = [node.get_content() for node in nodes]
+    embed_model = _get_embed_model()
+    embeddings = embed_model.get_text_embedding_batch(texts)
+    
+    for i, node in enumerate(nodes):
+        node.embedding = embeddings[i]
         text = node.get_content()
         section = extract_section_title(text)
         node.metadata["section_title"] = section
@@ -162,7 +168,6 @@ def ingest_docs(data_dir: str, user_id: str = "shared") -> Dict[str, int]:
     
 
     index = VectorStoreIndex.from_vector_store(vector_store)
-    for node in nodes:
-        index.insert_nodes([node])
+    index.insert_nodes(nodes)
 
     return {"documents": files_count, "nodes": len(nodes)}
