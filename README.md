@@ -1,6 +1,6 @@
 # InsightAI — Adaptive RAG for Indian Health Insurance
 
-InsightAI is a sophisticated Retrieval-Augmented Generation (RAG) pipeline designed to analyze and interpret Indian health insurance policy documents. It features a hybrid search engine, an automated auditing layer, and a minimalist, modern web interface.
+An Adaptive RAG pipeline made specifically for Indian health insurance policy analysis. Simply upload policy pdfs and ask normal questions like "is dental covered?" or even compare two policies.
 
 ---
 
