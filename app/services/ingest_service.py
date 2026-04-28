@@ -1,100 +1,97 @@
 """
 ingest_service.py — Document Ingestion Service
 ===============================================
-Encapsulates PDF parsing, segmenting, and vector indexing into Weaviate.
+PDF parsing, chunking, embedding, and direct Weaviate insertion.
+No LlamaIndex VectorStoreIndex — writes directly to Weaviate.
 """
 
 import hashlib
-import json
-import os
+import re
 import concurrent.futures
 from pathlib import Path
+from typing import List, Dict, Any
+
 from loguru import logger
-from typing import List, Dict
+from llama_index.core.node_parser import MarkdownNodeParser
+from llama_index.core.schema import Document
+import pymupdf4llm
+import pymupdf  # fitz — for page count
 
-from llama_index.core import Settings, StorageContext, VectorStoreIndex
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.schema import Document, TextNode
-from llama_index.readers.file import UnstructuredReader
-from llama_index.vector_stores.weaviate import WeaviateVectorStore
-
-from app.core.config import settings
+from app.services.vector_store import (
+    get_embed_model, insert_chunks, is_file_cached,
+)
 from app.utils.text_helpers import extract_insurer, extract_section_title, extract_clause_ref
-from app.services.vector_store import get_weaviate_client, collection_name_for_user, _get_embed_model
 
-CHUNK_SIZE = 512
-CHUNK_OVERLAP = 128
-UNSTRUCTURED_STRATEGY = "fast"
 
-def get_cache_path(user_id: str) -> Path:
-    cache_dir = Path(settings.PERSIST_DIR) / "dedup"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / f"{user_id}_dedup.json"
+# ---------------------------------------------------------------------------
+# Page-break marker that pymupdf4llm inserts between pages
+# ---------------------------------------------------------------------------
+PAGE_BREAK_MARKER = "-----"  # pymupdf4llm uses horizontal rules between pages
 
-def is_cached(user_id: str, file_hash: str) -> bool:
-    path = get_cache_path(user_id)
-    if not path.exists():
-        return False
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return file_hash in data
 
-def add_to_cache(user_id: str, file_hash: str, filename: str):
-    path = get_cache_path(user_id)
-    data = {}
-    if path.exists():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except:
-            data = {}
-    data[file_hash] = filename
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+# ---------------------------------------------------------------------------
+# PDF → Markdown → Documents (with per-page metadata)
+# ---------------------------------------------------------------------------
+
+def _estimate_page_for_position(md_text: str, char_pos: int) -> str:
+    """
+    Estimate which page a chunk falls on by counting page-break markers
+    (horizontal rules) that pymupdf4llm inserts between pages.
+    """
+    prefix = md_text[:char_pos]
+    # pymupdf4llm separates pages with "---" / "-----" lines
+    page_breaks = len(re.findall(r"^-{3,}\s*$", prefix, re.MULTILINE))
+    return str(page_breaks + 1)
+
+
+def _get_page_count(pdf_path: Path) -> int:
+    """Get the total page count from the PDF."""
+    try:
+        doc = pymupdf.open(str(pdf_path))
+        count = len(doc)
+        doc.close()
+        return count
+    except Exception:
+        return 0
 
 
 def load_documents(data_dir: str, user_id: str = "shared") -> dict:
+    """Parse PDFs into LlamaIndex Documents, skipping already-cached files."""
     data_path = Path(data_dir)
     if not data_path.exists():
         raise FileNotFoundError(f"Data directory not found: {data_dir}")
 
     pdf_files = sorted(data_path.glob("*.pdf"))
     if not pdf_files:
-        return {"documents": [], "files_count": 0}
+        return {"documents": [], "files_count": 0, "errors": [], "md_texts": {}}
 
-    all_documents = []
+    all_documents: List[Document] = []
+    md_texts: Dict[str, str] = {}  # filename -> full markdown text (for page estimation)
     processed_count = 0
-    errors = []
+    errors: List[str] = []
 
-    def _parse(path):
+    def _parse(path: Path) -> dict:
         filename = path.name
         fhash = hashlib.sha256(path.read_bytes()).hexdigest()
-        
-        if is_cached(user_id, fhash):
-            logger.info(f"Skipping heavily parsed file (already cached): {filename}")
+
+        if is_file_cached(user_id, fhash):
+            logger.info(f"Skipping '{filename}' (already in Weaviate)")
             return {"status": "cached", "hash": fhash, "name": filename}
 
         try:
-            reader = UnstructuredReader()
-            docs = reader.load_data(
-                file=path,
-                unstructured_kwargs={
-                    "strategy": UNSTRUCTURED_STRATEGY,
-                    "languages": ["eng"],
-                    "split_pdf_page": True,
-                },
-                extra_info={"filename": filename},
-            )
-            if not docs:
-                return {"status": "empty"}
+            md_text = pymupdf4llm.to_markdown(str(path), page_chunks=False)
+            if not md_text or len(md_text.strip()) < 50:
+                return {"status": "empty", "name": filename}
 
+            page_count = _get_page_count(path)
             insurer = extract_insurer(filename)
-            for doc in docs:
-                doc.metadata["file_hash"] = fhash
-                doc.metadata.setdefault("filename", filename)
-                doc.metadata.setdefault("insurer", insurer)
-                doc.metadata.setdefault("page_label", str(doc.metadata.get("page_number", "unknown")))
-                for key in ["filetype", "languages", "orig_elements"]:
-                    doc.metadata.pop(key, None)
-
-            return {"status": "parsed", "hash": fhash, "name": filename, "docs": docs}
+            doc = Document(text=md_text, metadata={
+                "file_hash": fhash,
+                "filename": filename,
+                "insurer": insurer,
+                "total_pages": page_count,
+            })
+            return {"status": "parsed", "hash": fhash, "name": filename, "docs": [doc], "md_text": md_text}
         except Exception as exc:
             return {"status": "error", "name": filename, "error": str(exc)}
 
@@ -106,46 +103,81 @@ def load_documents(data_dir: str, user_id: str = "shared") -> dict:
                 processed_count += 1
             elif res["status"] == "parsed":
                 all_documents.extend(res["docs"])
-                add_to_cache(user_id, res["hash"], res["name"])
+                md_texts[res["name"]] = res["md_text"]
                 processed_count += 1
+            elif res["status"] == "empty":
+                errors.append(f"'{res['name']}' appears to be empty or scanned — skipped")
             elif res["status"] == "error":
                 logger.error(f"Failed to load '{res['name']}': {res['error']}")
                 errors.append(f"{res['name']} error: {res['error']}")
 
-    return {"documents": all_documents, "files_count": processed_count, "errors": errors}
+    return {"documents": all_documents, "files_count": processed_count, "errors": errors, "md_texts": md_texts}
 
 
-def build_nodes(documents: List[Document]) -> List[TextNode]:
-    splitter = SentenceSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        paragraph_separator="\n\n",
-        secondary_chunking_regex=r"(?<=[\.\!\?])\s+",
-    )
-    nodes = splitter.get_nodes_from_documents(documents)
-    
-    # Pre-compute embeddings in batch before metadata extraction
-    texts = [node.get_content() for node in nodes]
-    embed_model = _get_embed_model()
-    embeddings = embed_model.get_text_embedding_batch(texts)
-    
-    for i, node in enumerate(nodes):
-        node.embedding = embeddings[i]
+# ---------------------------------------------------------------------------
+# Documents → Chunks with page-level metadata
+# ---------------------------------------------------------------------------
+
+def build_chunks(documents: List[Document], md_texts: Dict[str, str] = None) -> List[Dict[str, Any]]:
+    """
+    Parse documents into chunks using MarkdownNodeParser,
+    then enrich each chunk with section/clause/page metadata.
+    Returns a list of dicts ready for Weaviate insertion.
+    """
+    md_texts = md_texts or {}
+    parser = MarkdownNodeParser()
+    nodes = parser.get_nodes_from_documents(documents)
+
+    chunks = []
+    for node in nodes:
         text = node.get_content()
-        section = extract_section_title(text)
-        node.metadata["section_title"] = section
-        node.metadata["section"] = section
-        node.metadata["clause_ref"] = extract_clause_ref(text)
+        if not text or len(text.strip()) < 20:
+            continue  # skip trivially small chunks
 
-    return nodes
+        # Inherit metadata from the parent document
+        filename = node.metadata.get("filename", "unknown")
+        file_hash = node.metadata.get("file_hash", "")
+        insurer = node.metadata.get("insurer", "Unknown")
 
+        # Estimate page number from the chunk's position in the original markdown
+        page_label = "?"
+        if filename in md_texts:
+            full_md = md_texts[filename]
+            # Find where this chunk's text appears in the full markdown
+            chunk_pos = full_md.find(text[:100])  # match first 100 chars
+            if chunk_pos >= 0:
+                page_label = _estimate_page_for_position(full_md, chunk_pos)
+
+        chunks.append({
+            "content":       text,
+            "filename":      filename,
+            "file_hash":     file_hash,
+            "page_label":    page_label,
+            "section_title": extract_section_title(text),
+            "clause_ref":    extract_clause_ref(text),
+            "insurer":       insurer,
+        })
+
+    return chunks
+
+
+# ---------------------------------------------------------------------------
+# Main ingestion entry point
+# ---------------------------------------------------------------------------
 
 def ingest_docs(data_dir: str, user_id: str = "shared") -> Dict[str, int]:
-    """Ingest documents bounded to the specified user."""
+    """
+    Full ingestion pipeline:
+      1. Parse PDFs → Markdown (with page tracking)
+      2. Chunk with MarkdownNodeParser
+      3. Embed with HuggingFace
+      4. Write directly to Weaviate (single collection, user_id filter)
+    """
     result = load_documents(data_dir, user_id)
     documents = result["documents"]
     files_count = result["files_count"]
     errors = result.get("errors", [])
+    md_texts = result.get("md_texts", {})
 
     if errors and files_count == 0:
         raise RuntimeError(f"Ingestion failed for all files: {errors}")
@@ -153,21 +185,18 @@ def ingest_docs(data_dir: str, user_id: str = "shared") -> Dict[str, int]:
     if not documents:
         return {"documents": files_count, "nodes": 0}
 
-    nodes = build_nodes(documents)
-    if not nodes:
+    # Step 1: Chunk (with page metadata)
+    chunks = build_chunks(documents, md_texts)
+    if not chunks:
         return {"documents": files_count, "nodes": 0}
 
-    client = get_weaviate_client()
-    col_name = collection_name_for_user(user_id) if user_id != "shared" else settings.WEAVIATE_INDEX_BASE
+    # Step 2: Embed all chunks in batch
+    embed_model = get_embed_model()
+    texts = [c["content"] for c in chunks]
+    logger.info(f"[ingest] Embedding {len(texts)} chunks…")
+    embeddings = embed_model.get_text_embedding_batch(texts)
 
-    vector_store = WeaviateVectorStore(
-        weaviate_client=client,
-        index_name=col_name,
-        text_key="content",
-    )
-    
+    # Step 3: Write to Weaviate
+    inserted = insert_chunks(chunks, embeddings, user_id)
 
-    index = VectorStoreIndex.from_vector_store(vector_store)
-    index.insert_nodes(nodes)
-
-    return {"documents": files_count, "nodes": len(nodes)}
+    return {"documents": files_count, "nodes": inserted}

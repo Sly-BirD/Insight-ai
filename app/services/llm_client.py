@@ -29,6 +29,20 @@ class FallbackLLM:
             else:
                 raise e
 
+    async def ainvoke(self, *args, **kwargs):
+        try:
+            return await self.primary.ainvoke(*args, **kwargs)
+        except Exception as e:
+            if self.fallback:
+                logger.warning(f"Primary LLM failed (async): {e}. Switching to FALLBACK LLM.")
+                try:
+                    return await self.fallback.ainvoke(*args, **kwargs)
+                except Exception as fb_e:
+                    logger.error(f"Fallback LLM also failed (async): {fb_e}")
+                    raise fb_e
+            else:
+                raise e
+
 _llm: Optional[FallbackLLM] = None
 
 def init_llm():

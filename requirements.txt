@@ -1,15 +1,11 @@
 fastapi
 uvicorn
 python-multipart
-llama-index
-llama-index-vector-stores-weaviate
+llama-index-core
 llama-index-embeddings-huggingface
-llama-index-readers-file
-unstructured[pdf]
+pymupdf4llm
 weaviate-client<4.10.0
 loguru
-langgraph
-langchain
 langchain-groq
 langchain-core
 pydantic
@@ -18,4 +14,4 @@ json-repair
 PyJWT
 httpx
 supabase
-cryptography
+slowapi

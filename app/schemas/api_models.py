@@ -78,6 +78,15 @@ class RetrievalInfo(BaseModel):
     rewrites_done: int
     final_query:   str
 
+class SourceChunk(BaseModel):
+    filename:   str
+    page:       str
+    section:    str
+    clause_ref: str   = ""
+    insurer:    str   = "Unknown"
+    score:      float = 0.0
+    text:       str   = ""
+
 class AnswerDetail(BaseModel):
     decision:      str
     justification: str
@@ -91,4 +100,5 @@ class QueryResponse(BaseModel):
     answer:         AnswerDetail
     audit:          AuditInfo
     retrieval_info: RetrievalInfo
+    source_chunks:  List[SourceChunk] = []
     warning:        Optional[str] = None

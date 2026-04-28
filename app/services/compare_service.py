@@ -4,9 +4,10 @@ compare_service.py — Document Comparison Pipeline
 Direct LLM context ingestion to spot differences between two policies.
 """
 
+import re
 from pathlib import Path
 from loguru import logger
-from llama_index.readers.file import UnstructuredReader
+import pymupdf4llm
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.schemas.domain import CompareResult, DiffRow
@@ -46,17 +47,17 @@ NETWORK & RENEWAL
 """
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
-    reader = UnstructuredReader()
     try:
-        docs = reader.load_data(
-            file=pdf_path,
-            unstructured_kwargs={"strategy": "fast", "languages": ["eng"]},
-            extra_info={},
-        )
-        text = "\n\n".join(d.get_content() for d in docs)
-        if len(text) > 8000:
-            text = text[:8000] + "\n\n[... document truncated for comparison ...]"
-        return text.strip()
+        import re
+        md_text = pymupdf4llm.to_markdown(str(pdf_path))
+        # Compress whitespace
+        md_text = re.sub(r'\n{3,}', '\n\n', md_text)
+        # Markdown extraction is very clean and token-efficient.
+        # We cap at 16,000 characters (~4k tokens) to fit under the 12,000 TPM Groq limit
+        # when comparing two documents simultaneously.
+        if len(md_text) > 16000:
+            md_text = md_text[:16000] + "\n\n[... document truncated for comparison ...]"
+        return md_text.strip()
     except Exception as exc:
         return f"[Could not extract text from {pdf_path.name}: {exc}]"
 

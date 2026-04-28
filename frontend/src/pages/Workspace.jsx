@@ -291,6 +291,97 @@ function UploadPanel() {
   );
 }
 
+// ─── SOURCE CHUNKS PANEL ──────────────────────────────────────
+function SourceChunksPanel({ sources }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!sources?.length) return null;
+
+  // Group by filename
+  const fileGroups = {};
+  sources.forEach(s => {
+    if (!fileGroups[s.filename]) fileGroups[s.filename] = [];
+    fileGroups[s.filename].push(s);
+  });
+  const fileNames = Object.keys(fileGroups);
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          background: "none", border: "1px solid var(--color-border-subtle)",
+          borderRadius: 8, padding: "8px 14px", cursor: "pointer",
+          fontFamily: "var(--font-sans)", fontSize: 13,
+          color: "var(--color-text-muted)",
+          transition: "all var(--transition-fast)",
+        }}
+      >
+        <span style={{ fontSize: 14 }}>📄</span>
+        <span>{sources.length} source{sources.length > 1 ? "s" : ""} from {fileNames.length} file{fileNames.length > 1 ? "s" : ""}</span>
+        <span style={{ marginLeft: "auto", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▾</span>
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            style={{ overflow: "hidden" }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {sources.map((src, idx) => (
+                <div key={idx} className="card-subtle" style={{ padding: "10px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, overflow: "hidden" }}>
+                      <span style={{ fontSize: 12, color: "var(--color-text-muted)", flexShrink: 0 }}>#{idx + 1}</span>
+                      <span className="text-body" style={{
+                        margin: 0, fontWeight: 500, fontSize: 13,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                      }}>
+                        {src.filename}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 12, flexShrink: 0, alignItems: "center" }}>
+                      {src.page && src.page !== "?" && (
+                        <span className="text-small" style={{ 
+                          padding: "2px 8px", borderRadius: 4,
+                          background: "var(--color-bg-subtle)",
+                          border: "1px solid var(--color-border-subtle)",
+                        }}>
+                          Page {src.page}
+                        </span>
+                      )}
+                      <span className="text-small" style={{
+                        color: src.score >= 0.7 ? "var(--color-success)" : src.score >= 0.4 ? "var(--color-warning)" : "var(--color-text-muted)"
+                      }}>
+                        {Math.round(src.score * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-small" style={{ marginBottom: 4, color: "var(--color-text-muted)" }}>
+                    {src.section}{src.clause_ref ? ` · ${src.clause_ref}` : ""} · {src.insurer}
+                  </div>
+                  <div className="text-body" style={{
+                    margin: 0, fontSize: 12, lineHeight: 1.5,
+                    color: "var(--color-text-body)", opacity: 0.8,
+                    display: "-webkit-box", WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
+                    {src.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function QueryPanel({ messages, setMessages }) {
   const { getToken } = useAuth();
   const { hasDocuments, documentCount, addQuery } = useContext(AppContext);
@@ -399,6 +490,7 @@ function QueryPanel({ messages, setMessages }) {
           const res = msg.data;
           const meta = dm(res?.answer?.decision);
           const auditScore = res?.audit?.score ?? null;
+          const sources = res?.source_chunks ?? [];
 
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ alignSelf: "flex-start", width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -418,6 +510,17 @@ function QueryPanel({ messages, setMessages }) {
                   </div>
                 </div>
                 <div className="text-body" style={{ fontSize: 16 }}>{res.answer?.justification}</div>
+
+                {/* Audit flags */}
+                {res.audit?.flags?.length > 0 && (
+                  <div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                    {res.audit.flags.map((flag, fi) => (
+                      <div key={fi} className="text-small" style={{ color: "var(--color-warning)", display: "flex", gap: 6, alignItems: "center", marginBottom: fi < res.audit.flags.length - 1 ? 4 : 0 }}>
+                        <span>⚠</span> <span>{flag}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {res.answer?.clauses?.length > 0 && (
@@ -432,6 +535,9 @@ function QueryPanel({ messages, setMessages }) {
                   </div>
                 </div>
               )}
+
+              {/* Source Chunks */}
+              {sources.length > 0 && <SourceChunksPanel sources={sources} />}
             </motion.div>
           );
         })}
@@ -487,7 +593,15 @@ export default function WorkspaceModule() {
   });
 
   useEffect(() => {
-    localStorage.setItem("insight_sessions", JSON.stringify(sessions));
+    try {
+      localStorage.setItem("insight_sessions", JSON.stringify(sessions));
+    } catch (e) {
+      if (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED") {
+        console.warn("Storage cap reached. Pruning oldest sessions...");
+        const pruned = sessions.slice(0, Math.max(1, Math.floor(sessions.length / 2)));
+        setSessions(pruned);
+      }
+    }
   }, [sessions]);
 
   useEffect(() => {

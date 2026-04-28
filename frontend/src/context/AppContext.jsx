@@ -64,14 +64,14 @@ export function AppProvider({ children }) {
 
   const checkDocuments = useCallback(async () => {
     try {
-      const data = await checkStatus(userId);
+      const data = await checkStatus(getToken);
       const count = data?.node_count ?? 0;
       setDocumentCount(count);
       setHasDocuments(count > 0);
     } catch {
       setHasDocuments(null);
     }
-  }, [userId]);
+  }, [getToken]);
 
   useEffect(() => {
     checkDocuments();

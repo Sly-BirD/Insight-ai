@@ -1,163 +1,230 @@
 """
 query_service.py — Answer Generation Pipeline
 ==============================================
-The LangGraph workflow to read chunks and retrieve answers.
+Lean RAG pipeline: Retrieve → (Optional Rewrite) → Generate.
+No separate audit LLM call — uses heuristic scoring instead.
 """
 
-from typing import Any, Dict, Optional, List
-from typing_extensions import TypedDict
-from loguru import logger
+from typing import Any, Dict, List
 import json
-
+from loguru import logger
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from langgraph.graph import StateGraph, END
 
-from app.schemas.domain import RelevanceGrade, InsuranceAnswer, AuditResult
-from app.services.vector_store import get_user_retriever, nodes_to_chunks, chunks_to_context
+from app.schemas.domain import InsuranceAnswer
+from app.services.vector_store import hybrid_retrieve, chunks_to_dicts, chunks_to_context
 from app.services.llm_client import init_llm
 from app.utils.text_helpers import parse_llm_json
 
-MAX_REWRITES = 2
 
-class RAGState(TypedDict):
-    query:            str
-    rewrite_count:    int
-    current_query:    str
-    retrieved_chunks: List[Dict[str, Any]]
-    relevance:        Optional[RelevanceGrade]
-    answer:           Optional[InsuranceAnswer]
-    raw_answer_text:  str
-    audit:            Optional[AuditResult]
-    final_response:   Optional[Dict[str, Any]]
-    error:            Optional[str]
-    user_id:          str
-    history:          List[Dict[str, str]]
+# ---------------------------------------------------------------------------
+# Query Rewrite (only when chat history exists)
+# ---------------------------------------------------------------------------
 
-def node_retrieve(state: RAGState) -> RAGState:
-    query = state["current_query"]
-    user_id = state.get("user_id", "shared")
+def rewrite_query(user_query: str, history: List[Dict[str, str]]) -> str:
+    """Rewrite query to be standalone using chat history. Skipped if no history."""
+    if not history:
+        return user_query
+
+    hist_str = "\n".join(
+        [f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}" for m in history[-6:]]
+    )
+    sys = (
+        "Rewrite the user's latest query to be standalone taking the chat history into account. "
+        'Output ONLY valid JSON: {"query": "rewritten question here"}.'
+    )
+    prompt = f"Chat History:\n{hist_str}\n\nOriginal Query: {user_query}"
+
     try:
-        retriever = get_user_retriever(user_id)
-        nodes  = retriever.retrieve(query)
-        chunks = nodes_to_chunks(nodes)
-        return {**state, "retrieved_chunks": chunks, "error": None}
-    except Exception as exc:
-        return {**state, "retrieved_chunks": [], "error": str(exc)}
-
-def node_grade_relevance(state: RAGState) -> RAGState:
-    chunks = state["retrieved_chunks"]
-    if not chunks:
-        return {**state, "relevance": RelevanceGrade(relevant=False, score=0, reason="No chunks.")}
-
-    context = chunks_to_context(chunks[:5])
-    system_prompt = "Grade relevance 0-10. JSON: {\"relevant\": bool, \"score\": int, \"reason\": \"str\"}. score>=7 is true."
-    llm = init_llm()
-    try:
-        resp = llm.invoke([SystemMessage(content=system_prompt), HumanMessage(content=f"Query: {state['query']}\nChunks:\n{context}")])
-        grade = RelevanceGrade(**parse_llm_json(resp.content))
-        return {**state, "relevance": grade}
-    except Exception:
-        return {**state, "relevance": RelevanceGrade(relevant=True, score=7, reason="Parse err")}
-
-def node_rewrite_query(state: RAGState) -> RAGState:
-    original, current, c = state["query"], state["current_query"], state["rewrite_count"]
-    hist = []
-    for m in state.get("history", []):
-        role_label = "User" if m["role"] == "user" else "Assistant"
-        hist.append(f"{role_label}: {m['content']}")
-    history_ctx = "\n".join(hist)
-    
-    llm = init_llm()
-    try:
-        sys = "Rewrite the user's latest query to be standalone taking the chat history into account. Output ONLY the rewritten query."
-        prompt = f"Chat History:\n{history_ctx}\n\nOriginal Query: {original}\nCurrent Query: {current}"
+        llm = init_llm()
         resp = llm.invoke([SystemMessage(content=sys), HumanMessage(content=prompt)])
-        return {**state, "current_query": resp.content.strip().strip('"\''), "rewrite_count": c + 1}
-    except Exception:
-        return {**state, "current_query": original, "rewrite_count": c + 1}
+        data = parse_llm_json(resp.content)
+        return data.get("query", data.get("rewritten_query", user_query))
+    except Exception as exc:
+        logger.warning(f"Query rewrite failed: {exc}")
+        return user_query
 
-def node_generate_answer(state: RAGState) -> RAGState:
-    context = chunks_to_context(state["retrieved_chunks"])
-    sys = """You are InsightAI, an expert Indian Health Insurance Assistant. Answer the user's question directly, comprehensively, and with precise details based ONLY on the provided [SOURCE] documents.
-CRITICAL RULE: You MUST explicitly mention the exact document filename(s) you referenced in both your justification and summary (e.g. 'According to Star_Health_Policy.pdf...').
-If the context does not contain the answer, say so clearly.
+
+# ---------------------------------------------------------------------------
+# Answer Generation
+# ---------------------------------------------------------------------------
+
+SYSTEM_PROMPT = """You are InsightAI, an expert Indian Health Insurance Assistant. Answer the user's question directly, comprehensively, and with precise details based ONLY on the provided [SOURCE] documents.
+
+CRITICAL RULES:
+1. You MUST explicitly mention the exact document filename(s) you referenced (e.g. 'According to Star_Health_Policy.pdf...').
+2. If the context does not contain the answer, say so clearly and do NOT hallucinate.
+3. Quote the exact clause text from the sources when relevant.
+
 Make a decision: approve | reject | partial | informational.
-Output strictly valid JSON: { "decision": "...", "justification": "Detailed, precise explanation citing the exact source filename...", "clauses": ["Exact quoted clause text..."], "conditions": ["Relevant condition..."], "summary": "Clear one-sentence summary mentioning the file name...", "confidence": int_0_to_100 }"""
-    llm = init_llm()
+
+Output strictly valid JSON:
+{
+  "decision": "approve|reject|partial|informational",
+  "justification": "Detailed explanation citing the exact source filename and section...",
+  "clauses": ["Exact quoted clause text from the source..."],
+  "conditions": ["Relevant condition or waiting period..."],
+  "summary": "Clear one-sentence summary mentioning the file name",
+  "confidence": 0-100
+}"""
+
+
+def generate_answer(
+    query: str,
+    chunks: List[Dict[str, Any]],
+    history: List[Dict[str, str]],
+) -> InsuranceAnswer:
+    """Generate a structured insurance answer from retrieved chunks."""
+    if not chunks:
+        return InsuranceAnswer(
+            decision="informational",
+            justification="No relevant documents were found for this query. Please upload the relevant policy PDF first.",
+            clauses=[],
+            confidence=0,
+            conditions=[],
+            summary="No documents matched this query.",
+        )
+
+    context = chunks_to_context(chunks)
+
+    messages = [SystemMessage(content=SYSTEM_PROMPT)]
+    for m in history[-6:]:  # limit history to last 6 messages
+        if m["role"] == "user":
+            messages.append(HumanMessage(content=m["content"]))
+        elif m["role"] == "assistant":
+            messages.append(AIMessage(content=m["content"]))
+    messages.append(HumanMessage(content=f"Q: {query}\n\nSOURCES:\n{context}"))
+
     try:
-        messages = [SystemMessage(content=sys)]
-        for m in state.get("history", []):
-            if m["role"] == "user":
-                messages.append(HumanMessage(content=m["content"]))
-            elif m["role"] == "assistant":
-                messages.append(AIMessage(content=m["content"]))
-        messages.append(HumanMessage(content=f"Q:{state['query']}\n\nSRC:{context}"))
-        
+        llm = init_llm()
         resp = llm.invoke(messages)
         data = parse_llm_json(resp.content)
         data.setdefault("conditions", [])
         data.setdefault("summary", "")
-        return {**state, "answer": InsuranceAnswer(**data), "raw_answer_text": resp.content}
+        return InsuranceAnswer(**data)
     except Exception as exc:
-        ans = InsuranceAnswer(decision="informational", justification=f"Generation failed: {exc}", clauses=[], confidence=0, conditions=[], summary="Internal Error")
-        return {**state, "answer": ans, "raw_answer_text": "", "error": str(exc)}
+        logger.error(f"Generate answer failed: {exc}")
+        return InsuranceAnswer(
+            decision="informational",
+            justification=f"Answer generation failed: {exc}",
+            clauses=[],
+            confidence=0,
+            conditions=[],
+            summary="Internal Error",
+        )
 
-def node_audit_answer(state: RAGState) -> RAGState:
-    if not state["answer"]:
-        audit = AuditResult(score=0, flags=["None"], summary="Fail")
-        return {**state, "audit": audit, "final_response": _build_final_response(state, audit)}
-    
-    context = chunks_to_context(state["retrieved_chunks"][:10])
-    sys = "Audit the answer against sources. JSON: {\"score\": int, \"flags\": [], \"summary\": \"\"}"
-    llm = init_llm()
+
+# ---------------------------------------------------------------------------
+# Heuristic Audit (replaces LLM-based audit)
+# ---------------------------------------------------------------------------
+
+def heuristic_audit(
+    answer: InsuranceAnswer,
+    chunks_used: int,
+) -> Dict[str, Any]:
+    """
+    Fast heuristic audit — no LLM call needed.
+    Scores based on: confidence, chunk count, clause citations, and decision type.
+    """
+    score = answer.confidence  # start with model's self-reported confidence
+    flags: List[str] = []
+
+    # Boost if plenty of supporting chunks
+    if chunks_used >= 5:
+        score = min(100, score + 5)
+    elif chunks_used <= 2:
+        score = max(0, score - 15)
+        flags.append(f"Only {chunks_used} source chunk(s) found — limited evidence")
+
+    # Boost if clauses were cited
+    if len(answer.clauses) >= 2:
+        score = min(100, score + 5)
+    elif len(answer.clauses) == 0:
+        score = max(0, score - 10)
+        flags.append("No specific clauses cited")
+
+    # Penalize very low confidence
+    if answer.confidence < 40:
+        flags.append("Model reported low confidence")
+
+    # Cap score at 100
+    score = max(0, min(100, score))
+
+    summary = "Answer appears well-supported." if score >= 80 else "Answer may need manual verification."
+
+    return {"score": score, "flags": flags, "summary": summary}
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+def run_query(
+    user_query: str,
+    history: List[Dict[str, str]] = None,
+    user_id: str = "shared",
+) -> Dict[str, Any]:
+    """
+    Execute the full RAG pipeline:
+      1. Rewrite query (only if history exists)
+      2. Hybrid retrieve from Weaviate
+      3. Generate structured answer
+      4. Heuristic audit (no LLM call)
+    """
+    history = history or []
+
+    # 1. Rewrite (skipped when no history — saves an LLM call)
+    current_query = rewrite_query(user_query, history)
+
+    # 2. Retrieve
     try:
-        resp = llm.invoke([SystemMessage(content=sys), HumanMessage(content=f"Q:{state['query']}\nA:{json.dumps(state['answer'].model_dump())}\nSrc:{context}")])
-        audit = AuditResult(**parse_llm_json(resp.content))
+        raw_chunks = hybrid_retrieve(current_query, user_id)
+        chunks = chunks_to_dicts(raw_chunks)
     except Exception as exc:
-        audit = AuditResult(score=70, flags=[str(exc)], summary="Parse err")
+        logger.error(f"Retrieval failed: {exc}")
+        chunks = []
 
-    return {**state, "audit": audit, "final_response": _build_final_response(state, audit)}
+    # 2b. Filter out low-relevance chunks
+    MIN_SCORE = 0.15
+    filtered_chunks = [c for c in chunks if c["score"] >= MIN_SCORE]
+    if not filtered_chunks and chunks:
+        # If all chunks are below threshold, keep top 3 as fallback
+        filtered_chunks = sorted(chunks, key=lambda c: c["score"], reverse=True)[:3]
+    chunks = filtered_chunks
 
-def _build_final_response(state: RAGState, audit: AuditResult) -> Dict[str, Any]:
-    ans = state["answer"]
+    # 3. Generate Answer (single LLM call)
+    answer = generate_answer(current_query, chunks, history)
+
+    # 4. Heuristic Audit (instant, no LLM call)
+    audit = heuristic_audit(answer, len(chunks))
+
+    # 5. Build source chunks for frontend display
+    source_chunks = [
+        {
+            "filename": c["filename"],
+            "page": c["page"],
+            "section": c["section"],
+            "clause_ref": c.get("clause_ref", ""),
+            "insurer": c["insurer"],
+            "score": c["score"],
+            "text": c["text"][:300] + ("…" if len(c["text"]) > 300 else ""),
+        }
+        for c in chunks[:8]  # limit to top 8 for frontend
+    ]
+
+    # 6. Build Response
     res = {
-        "query": state["query"],
-        "answer": ans.model_dump() if ans else {},
-        "audit": audit.model_dump(),
-        "retrieval_info": {"chunks_used": len(state["retrieved_chunks"]), "rewrites_done": state["rewrite_count"], "final_query": state["current_query"]}
+        "query": user_query,
+        "answer": answer.model_dump(),
+        "audit": audit,
+        "retrieval_info": {
+            "chunks_used": len(chunks),
+            "rewrites_done": 1 if current_query != user_query else 0,
+            "final_query": current_query,
+        },
+        "source_chunks": source_chunks,
     }
-    if audit.score < 80:
-        res["warning"] = "Low unfaithful score. Verifying manually."
+    if audit["score"] < 70:
+        res["warning"] = "Answer confidence is low. Please verify against the original policy document."
+
     return res
 
-def route_after_grading(state: RAGState) -> str:
-    if state.get("relevance", RelevanceGrade(relevant=False, score=0, reason="")).relevant:
-        return "generate_answer"
-    elif state.get("rewrite_count", 0) < MAX_REWRITES:
-        return "rewrite_query"
-    return "generate_answer"
-
-def build_graph():
-    g = StateGraph(RAGState)
-    g.add_node("retrieve", node_retrieve)
-    g.add_node("grade_relevance", node_grade_relevance)
-    g.add_node("rewrite_query", node_rewrite_query)
-    g.add_node("generate_answer", node_generate_answer)
-    g.add_node("audit_answer", node_audit_answer)
-    g.set_entry_point("retrieve")
-    g.add_edge("retrieve", "grade_relevance")
-    g.add_edge("rewrite_query", "retrieve")
-    g.add_edge("generate_answer", "audit_answer")
-    g.add_edge("audit_answer", END)
-    g.add_conditional_edges("grade_relevance", route_after_grading, {"generate_answer": "generate_answer", "rewrite_query": "rewrite_query"})
-    return g.compile()
-
-def run_query(user_query: str, history: List[Dict[str, str]] = None, user_id: str = "shared") -> Dict[str, Any]:
-    initial_state: RAGState = {
-        "query": user_query, "current_query": user_query, "rewrite_count": 0, "retrieved_chunks": [],
-        "relevance": None, "answer": None, "raw_answer_text": "", "audit": None, "final_response": None, "error": None, "user_id": user_id,
-        "history": history or []
-    }
-    graph = build_graph()
-    result = graph.invoke(initial_state)
-    return result.get("final_response", {"error": "No response"})

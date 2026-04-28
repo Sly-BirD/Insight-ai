@@ -78,12 +78,12 @@ export async function fetchDocuments(getToken) {
   }
 }
 
-// ─── GET /status (public) ─────────────────────────────────────
+// ─── GET /status (protected) ─────────────────────────────────
 
-export async function checkStatus(userId) {
+export async function checkStatus(getToken) {
   try {
-    const url = userId ? `${BASE_URL}/status?user_id=${encodeURIComponent(userId)}` : `${BASE_URL}/status`;
-    const res = await fetch(url, {
+    const res = await fetch(`${BASE_URL}/status`, {
+      headers: await authHeaders(getToken),
       signal: AbortSignal.timeout(5_000),
     });
     return handleResponse(res);

@@ -318,8 +318,8 @@ export default function SettingsModule() {
             { label: "Vector Database", value: "Weaviate (Hybrid Search)" },
             { label: "Search Strategy", value: "Vector + BM25 (α=0.65)" },
             { label: "Max Upload Size", value: "25 MB per PDF" },
-            { label: "Retrieval Top-K", value: "15 chunks" },
-            { label: "Encryption", value: "AES-256-GCM (per-user keys)" },
+            { label: "Retrieval Top-K", value: "12 chunks" },
+            { label: "Encryption", value: "Supabase at-rest + hashed user IDs" },
           ].map(item => (
             <div key={item.label} className="card-subtle" style={{ padding: "10px 14px" }}>
               <div className="text-small" style={{ marginBottom: 2 }}>{item.label}</div>

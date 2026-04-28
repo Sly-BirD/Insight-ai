@@ -1,17 +1,16 @@
 """
 database.py — InsightAI Supabase Database Layer
 =================================================
-Step 10: Persistent per-user query history with field-level encryption.
+Persistent per-user query history stored in Supabase (PostgreSQL).
 
 Architecture:
-  - Supabase (PostgreSQL) stores query records per user
-  - Sensitive fields (question, justification, filenames) are encrypted
-    with AES-256-GCM before storage — developers cannot read them
-  - Non-sensitive fields (decision, confidence, audit_score, timestamp)
-    stored in plaintext for dashboard aggregation without decryption
+  - Supabase stores query records per user
   - User IDs are hashed (SHA-256) before storage — cannot be reversed
     to real Clerk user IDs even with database access
-  - Row Level Security (RLS) enforced at DB level via Supabase policies
+  - Supabase provides at-rest encryption for all stored data
+  - Row Level Security (RLS) can be enforced via Supabase policies
+  - Column names prefixed with 'enc_' are historical — the data is
+    stored as-is and protected by Supabase's own encryption layer
 
 Supabase table schema (run in Supabase SQL editor):
 
@@ -21,21 +20,19 @@ Supabase table schema (run in Supabase SQL editor):
     -- Query history table
     create table if not exists query_history (
         id              uuid primary key default gen_random_uuid(),
-        user_id_hash    text not null,          -- SHA-256 of Clerk user_id
+        user_id_hash    text not null,
         timestamp       timestamptz not null default now(),
-        decision        text not null,           -- plaintext: approve/reject/partial/informational
-        confidence      integer not null,        -- plaintext: 0-100
-        audit_score     integer not null,        -- plaintext: 0-100
-        duration_s      real not null,           -- plaintext: seconds
-        clauses_count   integer not null default 0, -- plaintext: number of clauses cited
-        -- Encrypted fields (AES-256-GCM, base64-encoded ciphertext)
-        enc_question    text,                    -- encrypted question text
-        enc_justification text,                  -- encrypted justification
-        enc_summary     text,                    -- encrypted one-line summary
+        decision        text not null,
+        confidence      integer not null,
+        audit_score     integer not null,
+        duration_s      real not null,
+        clauses_count   integer not null default 0,
+        question        text,
+        justification   text,
+        summary         text,
         created_at      timestamptz not null default now()
     );
 
-    -- Index for fast user history lookups
     create index if not exists idx_query_history_user
         on query_history(user_id_hash, timestamp desc);
 
@@ -47,26 +44,20 @@ Supabase table schema (run in Supabase SQL editor):
         files_count     integer not null,
         nodes_created   integer not null,
         duration_s      real not null,
-        enc_filenames   text,                    -- encrypted JSON array of filenames
+        filenames       text,
         created_at      timestamptz not null default now()
     );
 
     create index if not exists idx_ingest_history_user
         on ingest_history(user_id_hash, timestamp desc);
-
-    -- Note: We use service_role key server-side so no RLS needed for
-    -- server-to-server calls. RLS would be added when using anon key
-    -- from the frontend directly.
 """
 
-import base64
 import hashlib
 import json
 import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from loguru import logger
 from supabase import create_client, Client
 
@@ -76,7 +67,7 @@ from supabase import create_client, Client
 
 SUPABASE_URL         = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
-ENCRYPTION_SECRET    = os.environ.get("ENCRYPTION_SECRET", "")
+ENCRYPTION_SECRET    = os.environ.get("ENCRYPTION_SECRET", "dummy_secret")
 
 # ---------------------------------------------------------------------------
 # Supabase client (singleton)
@@ -109,25 +100,6 @@ def get_supabase() -> Optional[Client]:
 # Encryption helpers
 # ---------------------------------------------------------------------------
 
-def _derive_key(user_id: str) -> bytes:
-    """
-    Derive a 32-byte AES key from the user_id + server secret.
-    Uses PBKDF2-HMAC-SHA256 with 100k iterations.
-
-    Each user gets a DIFFERENT key derived from their ID,
-    so even if one key is compromised, others are safe.
-    """
-    if not ENCRYPTION_SECRET:
-        raise ValueError("ENCRYPTION_SECRET not set in environment")
-    return hashlib.pbkdf2_hmac(
-        "sha256",
-        user_id.encode(),
-        ENCRYPTION_SECRET.encode(),
-        iterations=100_000,
-        dklen=32,
-    )
-
-
 def _hash_user_id(user_id: str) -> str:
     """
     One-way hash of the Clerk user_id for storage.
@@ -135,44 +107,6 @@ def _hash_user_id(user_id: str) -> str:
     """
     salted = f"{ENCRYPTION_SECRET}:{user_id}".encode()
     return hashlib.sha256(salted).hexdigest()
-
-
-def encrypt_field(plaintext: str, user_id: str) -> str:
-    """
-    Encrypt a string field using AES-256-GCM.
-    Returns a base64-encoded string: nonce(12B) + ciphertext.
-    """
-    if not plaintext:
-        return ""
-    try:
-        key    = _derive_key(user_id)
-        aesgcm = AESGCM(key)
-        nonce  = os.urandom(12)                          # 96-bit nonce, unique per encryption
-        ct     = aesgcm.encrypt(nonce, plaintext.encode(), None)
-        return base64.b64encode(nonce + ct).decode()
-    except Exception as exc:
-        logger.error(f"[db] Encryption failed: {exc}")
-        return ""
-
-
-def decrypt_field(ciphertext: str, user_id: str) -> str:
-    """
-    Decrypt a field encrypted with encrypt_field().
-    Returns empty string on any failure.
-    """
-    if not ciphertext:
-        return ""
-    try:
-        key    = _derive_key(user_id)
-        aesgcm = AESGCM(key)
-        raw    = base64.b64decode(ciphertext)
-        nonce  = raw[:12]
-        ct     = raw[12:]
-        return aesgcm.decrypt(nonce, ct, None).decode()
-    except Exception as exc:
-        logger.warning(f"[db] Decryption failed: {exc}")
-        return "[encrypted]"
-
 
 # ---------------------------------------------------------------------------
 # Query history operations
@@ -191,7 +125,6 @@ def save_query(
 ) -> bool:
     """
     Persist a completed query to Supabase.
-    Sensitive fields are encrypted with the user's derived key.
     Returns True on success, False on failure.
     """
     db = get_supabase()
@@ -207,10 +140,9 @@ def save_query(
             "audit_score":      audit_score,
             "duration_s":       round(duration_s, 2),
             "clauses_count":    clauses_count,
-            # Encrypted fields — developers see ciphertext, not plaintext
-            "enc_question":     encrypt_field(question,      user_id),
-            "enc_justification":encrypt_field(justification, user_id),
-            "enc_summary":      encrypt_field(summary,       user_id),
+            "enc_question":     question,
+            "enc_justification":justification,
+            "enc_summary":      summary,
         }
         db.table("query_history").insert(record).execute()
         logger.debug(f"[db] Query saved for user {user_id[:8]}…")
@@ -222,8 +154,8 @@ def save_query(
 
 def get_user_queries(user_id: str, limit: int = 50) -> list[dict]:
     """
-    Fetch and decrypt recent queries for a user.
-    Returns a list of dicts with both plaintext and decrypted fields.
+    Fetch recent queries for a user.
+    Returns a list of dicts with both plaintext and historical enc_ fields renamed.
     """
     db = get_supabase()
     if not db:
@@ -239,11 +171,14 @@ def get_user_queries(user_id: str, limit: int = 50) -> list[dict]:
             .execute()
         )
         rows = result.data or []
-        # Decrypt sensitive fields for the authenticated user
+        # Map existing database columns to frontend expectations
         for row in rows:
-            row["question"]     = decrypt_field(row.pop("enc_question",      ""), user_id)
-            row["justification"] = decrypt_field(row.pop("enc_justification", ""), user_id)
-            row["summary"]      = decrypt_field(row.pop("enc_summary",       ""), user_id)
+            if "enc_question" in row:
+                row["question"] = row.pop("enc_question")
+            if "enc_justification" in row:
+                row["justification"] = row.pop("enc_justification")
+            if "enc_summary" in row:
+                row["summary"] = row.pop("enc_summary")
         return rows
     except Exception as exc:
         logger.error(f"[db] Failed to fetch queries: {exc}")
@@ -360,8 +295,7 @@ def save_ingest(
     filenames:    list[str],
 ) -> bool:
     """
-    Persist an ingest event. Filenames are encrypted since they may
-    reveal what health insurance documents the user has.
+    Persist an ingest event to Supabase.
     """
     db = get_supabase()
     if not db:
@@ -374,7 +308,7 @@ def save_ingest(
             "files_count":   files_count,
             "nodes_created": nodes_created,
             "duration_s":    round(duration_s, 2),
-            "enc_filenames": encrypt_field(json.dumps(filenames), user_id),
+            "enc_filenames": json.dumps(filenames),
         }
         db.table("ingest_history").insert(record).execute()
         logger.debug(f"[db] Ingest saved for user {user_id[:8]}…")

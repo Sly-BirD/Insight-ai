@@ -15,7 +15,8 @@ class Settings:
     # Weaviate Settings
     WEAVIATE_HOST = os.getenv("WEAVIATE_HOST", "localhost")
     WEAVIATE_PORT = int(os.getenv("WEAVIATE_PORT", 8080))
-    WEAVIATE_INDEX_BASE = os.getenv("WEAVIATE_INDEX_BASE", "InsurancePolicies")
+    WEAVIATE_CLUSTER_URL = os.getenv("WEAVIATE_CLUSTER_URL", "")
+    WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY", "")
     
     # Models
     EMBED_MODEL_NAME = os.getenv("EMBED_MODEL_NAME", "BAAI/bge-base-en-v1.5")
@@ -24,7 +25,6 @@ class Settings:
     
     # Storage Paths
     BASE_DIR = Path(__file__).parent.parent.parent
-    PERSIST_DIR = str(BASE_DIR / "storage")
     TEMP_DIR = BASE_DIR / "temp"
     
     # Clerk Authentication

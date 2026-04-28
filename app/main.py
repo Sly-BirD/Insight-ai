@@ -20,6 +20,10 @@ from app.api.router import router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup actions
+    if settings.TEMP_DIR.exists():
+        for f in settings.TEMP_DIR.glob("*.pdf"):
+            f.unlink(missing_ok=True)
+        logger.info("Cleaned up stale temp files from previous run")
     settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)
     logger.info("Initialising RAG pipeline components…")
     try:
@@ -53,12 +57,14 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 app.include_router(router)

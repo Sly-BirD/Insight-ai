@@ -8,10 +8,14 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
-from collections import defaultdict
-from fastapi import APIRouter, File, HTTPException, UploadFile, Depends
+from fastapi import APIRouter, File, HTTPException, UploadFile, Depends, Request
+from fastapi.concurrency import run_in_threadpool
 import json
 from loguru import logger
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 
 from app.core.config import settings
 from app.core.security import require_auth, get_user_id
@@ -19,10 +23,13 @@ import app.database as db
 from app.schemas.api_models import (
     HealthResponse, StatusResponse, AnalyticsResponse, IngestResponse,
     QueryRequest, QueryResponse, AnswerDetail, AuditInfo, RetrievalInfo,
-    DecisionBreakdown, DailyCount
+    SourceChunk, DecisionBreakdown, DailyCount
 )
-from app.services.vector_store import get_node_count, collection_name_for_user
-from app.services.ingest_service import ingest_docs, get_cache_path
+from app.services.vector_store import (
+    get_node_count, get_user_documents,
+    delete_user_document, delete_all_user_documents,
+)
+from app.services.ingest_service import ingest_docs
 from app.services.query_service import run_query
 from app.services.compare_service import compare_policies
 
@@ -30,70 +37,8 @@ router = APIRouter()
 
 ALLOWED_EXT    = {".pdf"}
 ALLOWED_MIME   = {"application/pdf", "application/octet-stream"}
+MAX_FILE_SIZE  = 25 * 1024 * 1024  # 25MB
 
-# ---------------------------------------------------------------------------
-# In-memory query log (Fallback Analytics)
-# ---------------------------------------------------------------------------
-_query_log: List[dict] = []
-
-def _log_query(question: str, answer: dict, audit: dict, duration: float) -> None:
-    _query_log.append({
-        "id":         str(int(time.time() * 1000)),
-        "timestamp":  datetime.now(timezone.utc).isoformat(),
-        "question":   question,
-        "decision":   answer.get("decision", "informational"),
-        "confidence": answer.get("confidence", 0),
-        "audit_score": audit.get("score", 0),
-        "duration_s": duration,
-        "clauses_count": len(answer.get("clauses", [])),
-    })
-    if len(_query_log) > 500:
-        _query_log.pop(0)
-
-def _build_analytics() -> AnalyticsResponse:
-    if not _query_log:
-        return AnalyticsResponse(
-            total_queries=0, avg_confidence=0.0, avg_audit_score=0.0,
-            avg_duration_s=0.0, decisions=DecisionBreakdown(),
-            recent_queries=[], daily_counts=[],
-        )
-
-    total = len(_query_log)
-    decisions = DecisionBreakdown()
-    conf_sum, audit_sum, dur_sum = 0.0, 0.0, 0.0
-    daily: dict = defaultdict(lambda: {"queries": 0, "approved": 0, "rejected": 0})
-
-    for entry in _query_log:
-        d = entry["decision"].lower()
-        if   d == "approve":       decisions.approve       += 1
-        elif d == "reject":        decisions.reject        += 1
-        elif d == "partial":       decisions.partial       += 1
-        else:                      decisions.informational += 1
-
-        conf_sum  += entry.get("confidence", 0)
-        audit_sum += entry.get("audit_score", 0)
-        dur_sum   += entry.get("duration_s", 0)
-
-        ts = entry.get("timestamp", "")
-        date_key = ts[:10] if ts else "unknown"
-        daily[date_key]["queries"]  += 1
-        if d == "approve": daily[date_key]["approved"] += 1
-        if d == "reject":  daily[date_key]["rejected"] += 1
-
-    daily_counts = [
-        DailyCount(date=k, queries=v["queries"], approved=v["approved"], rejected=v["rejected"])
-        for k, v in sorted(daily.items())[-14:]
-    ]
-
-    return AnalyticsResponse(
-        total_queries=total,
-        avg_confidence=round(conf_sum / total, 1),
-        avg_audit_score=round(audit_sum / total, 1),
-        avg_duration_s=round(dur_sum / total, 2),
-        decisions=decisions,
-        recent_queries=list(reversed(_query_log))[:20],
-        daily_counts=daily_counts,
-    )
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -119,16 +64,10 @@ async def health_check():
     return HealthResponse()
 
 @router.get("/status", response_model=StatusResponse, tags=["System"])
-async def index_status(user_id: str = None):
-    if user_id:
-        try:
-            col = collection_name_for_user(user_id)
-        except Exception:
-            col = settings.WEAVIATE_INDEX_BASE
-    else:
-        col = settings.WEAVIATE_INDEX_BASE
-    count = get_node_count(col)
-    return StatusResponse(has_documents=count > 0, node_count=count, index_name=col)
+async def index_status(_claims: dict = Depends(require_auth)):
+    user_id = get_user_id(_claims)
+    count = get_node_count(user_id)
+    return StatusResponse(has_documents=count > 0, node_count=count, index_name="InsuranceDocs")
 
 @router.get("/analytics", tags=["Analytics"])
 async def analytics(_claims: dict = Depends(require_auth)):
@@ -138,22 +77,19 @@ async def analytics(_claims: dict = Depends(require_auth)):
         recent = db.get_user_queries(user_id, limit=50)
         db_analytics["recent_queries"] = recent
         return db_analytics
-    return _build_analytics()
+    
+    # Return empty defaults if no queries yet
+    return AnalyticsResponse(
+        total_queries=0, avg_confidence=0.0, avg_audit_score=0.0,
+        avg_duration_s=0.0, decisions=DecisionBreakdown(),
+        recent_queries=[], daily_counts=[],
+    )
 
 @router.get("/documents", tags=["Workspace"])
 async def list_documents(_claims: dict = Depends(require_auth)):
     user_id = get_user_id(_claims)
-    path = get_cache_path(user_id)
-    if not path.exists():
-        return {"documents": []}
-    
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        docs = list(set(data.values()))
-        return {"documents": sorted(docs)}
-    except Exception as exc:
-        logger.error(f"[router] Failed to read dedup cache for user {user_id}: {exc}")
-        return {"documents": []}
+    docs = get_user_documents(user_id)
+    return {"documents": docs}
 
 @router.get("/history", tags=["Analytics"])
 async def history_endpoint(limit: int = 50, _claims: dict = Depends(require_auth)):
@@ -163,44 +99,31 @@ async def history_endpoint(limit: int = 50, _claims: dict = Depends(require_auth
 
 @router.delete("/documents/{doc_name}", tags=["Workspace"])
 async def delete_document(doc_name: str, _claims: dict = Depends(require_auth)):
-    """Remove a specific document from the user's dedup cache."""
+    """Remove a specific document from the user's Weaviate data."""
     user_id = get_user_id(_claims)
-    path = get_cache_path(user_id)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="No documents found.")
+    
+    # Check document exists
+    docs = get_user_documents(user_id)
+    if doc_name not in docs:
+        raise HTTPException(status_code=404, detail=f"Document '{doc_name}' not found.")
+    
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        keys_to_remove = [k for k, v in data.items() if v == doc_name]
-        if not keys_to_remove:
-            raise HTTPException(status_code=404, detail=f"Document '{doc_name}' not found.")
-        for k in keys_to_remove:
-            del data[k]
-        path.write_text(json.dumps(data), encoding="utf-8")
-        return {"status": "deleted", "document": doc_name, "remaining": len(set(data.values()))}
-    except HTTPException:
-        raise
+        deleted = delete_user_document(user_id, doc_name)
+        remaining = len(docs) - 1
+        return {"status": "deleted", "document": doc_name, "remaining": remaining}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 @router.delete("/documents", tags=["Workspace"])
 async def delete_all_documents(_claims: dict = Depends(require_auth)):
-    """Clear all documents from the user's Weaviate collection and dedup cache."""
-    from app.services.vector_store import collection_name_for_user, get_weaviate_client
+    """Clear all documents belonging to this user."""
     user_id = get_user_id(_claims)
-    col_name = collection_name_for_user(user_id)
     try:
-        client = get_weaviate_client()
-        if client.collections.exists(col_name):
-            client.collections.delete(col_name)
-            logger.info(f"[router] Deleted Weaviate collection {col_name}")
+        deleted = delete_all_user_documents(user_id)
+        return {"status": "cleared", "message": f"Removed {deleted} chunks."}
     except Exception as exc:
-        logger.error(f"[router] Failed to delete collection: {exc}")
-
-    path = get_cache_path(user_id)
-    if path.exists():
-        path.unlink()
-
-    return {"status": "cleared", "message": "All documents removed."}
+        logger.error(f"[router] Failed to delete documents: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @router.delete("/history", tags=["Analytics"])
 async def clear_history(_claims: dict = Depends(require_auth)):
@@ -226,6 +149,9 @@ async def ingest_endpoint(files: List[UploadFile] = File(...), _claims: dict = D
             if not content:
                 errors.append(f"'{filename}' is empty — skipped")
                 continue
+            if len(content) > MAX_FILE_SIZE:
+                errors.append(f"'{filename}' exceeds 25MB limit")
+                continue
             dest.write_bytes(content)
             saved_paths.append(dest)
         except Exception as exc:
@@ -239,7 +165,7 @@ async def ingest_endpoint(files: List[UploadFile] = File(...), _claims: dict = D
     user_id = get_user_id(_claims)
     
     try:
-        result = ingest_docs(str(settings.TEMP_DIR), user_id=user_id)
+        result = await run_in_threadpool(ingest_docs, str(settings.TEMP_DIR), user_id=user_id)
         nodes_created = result.get("nodes", 0)
         processed = result.get("documents", len(saved_paths))
     except Exception as exc:
@@ -260,14 +186,15 @@ async def ingest_endpoint(files: List[UploadFile] = File(...), _claims: dict = D
     )
 
 @router.post("/query", response_model=QueryResponse, tags=["Query"])
-async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_auth)):
-    q = request.question
+@limiter.limit("10/minute")
+async def query_endpoint(request: Request, payload: QueryRequest, _claims: dict = Depends(require_auth)):
+    q = payload.question
     user_id = get_user_id(_claims)
     start = time.perf_counter()
 
     try:
-        hist_dicts = [m.model_dump() for m in request.history]
-        raw = run_query(q, history=hist_dicts, user_id=user_id)
+        hist_dicts = [m.model_dump() for m in payload.history]
+        raw = await run_in_threadpool(run_query, q, history=hist_dicts, user_id=user_id)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -276,7 +203,6 @@ async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_
     aud = raw.get("audit", {})
     info = raw.get("retrieval_info", {})
 
-    _log_query(question=q, answer=ans, audit=aud, duration=duration)
     db.save_query(
         user_id=user_id, question=q, decision=ans.get("decision", "informational"),
         confidence=ans.get("confidence", 0), audit_score=aud.get("score", 0),
@@ -285,11 +211,13 @@ async def query_endpoint(request: QueryRequest, _claims: dict = Depends(require_
     )
 
     try:
+        source_chunks = [SourceChunk(**sc) for sc in raw.get("source_chunks", [])]
         return QueryResponse(
             query=raw.get("query", q),
             answer=AnswerDetail(**ans),
             audit=AuditInfo(**aud),
             retrieval_info=RetrievalInfo(**info),
+            source_chunks=source_chunks,
             warning=raw.get("warning"),
         )
     except Exception as exc:
@@ -311,11 +239,14 @@ async def compare_endpoint(files: List[UploadFile] = File(...), _claims: dict = 
             content = await upload.read()
             if not content:
                 raise HTTPException(status_code=400, detail=f"'{upload.filename}' is empty.")
+            if len(content) > MAX_FILE_SIZE:
+                raise HTTPException(status_code=413, detail=f"'{upload.filename}' exceeds 25MB limit.")
             dest = settings.TEMP_DIR / f"compare_{upload.filename}"
             dest.write_bytes(content)
             saved.append(dest)
 
-        result = compare_policies(
+        result = await run_in_threadpool(
+            compare_policies,
             pdf_a_path=saved[0], pdf_a_name=files[0].filename,
             pdf_b_path=saved[1], pdf_b_name=files[1].filename,
         )

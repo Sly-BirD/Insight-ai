@@ -4,6 +4,8 @@ security.py — Clerk JWT Authentication Logic
 FastAPI dependency to verify session tokens directly from Clerk's JWKS.
 """
 
+import os
+
 import jwt as pyjwt
 from jwt.algorithms import RSAAlgorithm
 import httpx
@@ -53,7 +55,9 @@ async def require_auth(
 ) -> dict:
     """Dependency that verifies a Clerk session JWT."""
     if not settings.CLERK_SECRET_KEY:
-        logger.warning("[auth] CLERK_SECRET_KEY not set — skipping auth check")
+        if os.getenv("ENV", "development") == "production":
+            raise RuntimeError("CLERK_SECRET_KEY must be set in production")
+        logger.warning("[auth] Dev mode: auth bypassed")
         return {"sub": "dev"}
 
     if not credentials or not credentials.credentials:
