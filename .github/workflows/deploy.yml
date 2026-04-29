@@ -9,10 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Deploy to Render
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Spaces
         run: |
-          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          git remote add huggingface https://user:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/nilayss/insight-ai-backend
+          git push huggingface main --force
 
   deploy-frontend:
     runs-on: ubuntu-latest
@@ -22,4 +25,4 @@ jobs:
         with:
           node-version: '22'
       - run: cd frontend && npm install --legacy-peer-deps && npm run build
-      # Vercel handles actual deployment automatically via GitHub integration
+      # Vercel handles actual deployment via CLI
