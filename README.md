@@ -1,18 +1,11 @@
----
-title: InsightAI Backend
-emoji: 🏥
-colorFrom: blue
-colorTo: purple
-sdk: docker
-pinned: false
----
-
 # InsightAI — Adaptive RAG for Indian Health Insurance
 
 
 An Adaptive RAG pipeline made specifically for Indian health insurance policy analysis. Simply upload policy pdfs and ask normal questions like "is dental covered?" or even compare two policies.
 
 ---
+
+https://insight-ai-frontend-iota.vercel.app/
 
 ## 🚀 Features
 
