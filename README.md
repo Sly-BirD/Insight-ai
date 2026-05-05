@@ -1,3 +1,12 @@
+---
+title: InsightAI Backend
+emoji: 🏥
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # InsightAI — Adaptive RAG for Indian Health Insurance
 
 
