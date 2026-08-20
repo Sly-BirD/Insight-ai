@@ -23,6 +23,7 @@ import FluidShader from "./components/FluidShader.jsx";
 import TitleBar from "./components/TitleBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import AuthGuard from "./components/AuthGuard.jsx";
+import ServerDownBanner from "./components/ServerDownBanner.jsx";
 
 // ─── Pages ────────────────────────────────────────────────────
 import HomePage from "./pages/HomePage.jsx";
@@ -85,6 +86,7 @@ function AppInner() {
   return (
     <div className="app-shell" data-theme={dark ? "dark" : "light"}>
       <FluidShader dark={dark} />
+      <ServerDownBanner />
 
       <div className={`main-content${activeSection !== "home" ? " with-sidebar" : ""}`}>
         <TitleBar
