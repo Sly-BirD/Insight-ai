@@ -4,7 +4,7 @@ python-multipart
 llama-index-core
 llama-index-embeddings-huggingface
 pymupdf4llm
-weaviate-client<4.10.0
+weaviate-client
 loguru
 langchain-groq
 langchain-core

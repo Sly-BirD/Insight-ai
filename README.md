@@ -14,6 +14,8 @@ An Adaptive RAG pipeline made specifically for Indian health insurance policy an
 
 ---
 
+https://insight-ai-frontend-iota.vercel.app/
+
 ## 🚀 Features
 
 * **Adaptive RAG Pipeline**: Orchestrated using **LangGraph** to handle complex document queries with self-correction capabilities.

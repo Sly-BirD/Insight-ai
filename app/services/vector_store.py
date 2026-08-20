@@ -92,6 +92,7 @@ def ensure_collection(client: weaviate.WeaviateClient) -> None:
     client.collections.create(
         name=COLLECTION_NAME,
         vectorizer_config=Configure.Vectorizer.none(),
+        vector_index_config=Configure.VectorIndex.hfresh(),
         properties=[
             Property(name="content", data_type=DataType.TEXT),
             Property(name="user_id", data_type=DataType.TEXT),
