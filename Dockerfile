@@ -20,6 +20,8 @@ RUN python -c "from llama_index.embeddings.huggingface import HuggingFaceEmbeddi
 # Copy the rest of the app, ensuring the new user owns the files
 COPY --chown=user . $HOME/app
 
-# Expose port 7860 as required by Hugging Face Spaces
-EXPOSE 7860
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Default port (Render sets PORT=10000, HF Spaces uses 7860)
+ENV PORT=7860
+EXPOSE ${PORT}
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+
