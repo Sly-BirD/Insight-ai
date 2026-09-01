@@ -14,7 +14,7 @@ An Adaptive RAG pipeline made specifically for Indian health insurance policy an
 
 ---
 
-https://insight-ai-frontend-iota.vercel.app/
+https://insight-ai-orcin.vercel.app/
 
 ## 🚀 Features
 
