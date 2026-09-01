@@ -15,7 +15,7 @@ ENV HOME=/home/user \
 WORKDIR $HOME/app
 
 # Pre-download the embedding model into the user's cache
-RUN python -c "from llama_index.embeddings.huggingface import HuggingFaceEmbedding; HuggingFaceEmbedding(model_name='BAAI/bge-base-en-v1.5', device='cpu')"
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-base-en-v1.5')"
 
 # Copy the rest of the app, ensuring the new user owns the files
 COPY --chown=user . $HOME/app

@@ -13,13 +13,13 @@ from weaviate.classes.init import Auth
 from weaviate.classes.config import Configure, Property, DataType
 from weaviate.classes.query import MetadataQuery, Filter
 
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from loguru import logger
 
 from app.core.config import settings
 
 _weaviate_client: Optional[weaviate.WeaviateClient] = None
-_embed_model: Optional[HuggingFaceEmbedding] = None
+_embed_model: Optional[FastEmbedEmbedding] = None
 
 COLLECTION_NAME = "InsuranceDocs"
 TOP_K = 12
@@ -61,12 +61,12 @@ def close_weaviate_client() -> None:
         _weaviate_client = None
 
 
-def get_embed_model() -> HuggingFaceEmbedding:
-    """Get or initialize the embedding model singleton."""
+def get_embed_model() -> FastEmbedEmbedding:
+    """Get or initialize the lightweight FastEmbed embedding model singleton."""
     global _embed_model
     if _embed_model is None:
-        _embed_model = HuggingFaceEmbedding(
-            model_name=settings.EMBED_MODEL_NAME, device="cpu"
+        _embed_model = FastEmbedEmbedding(
+            model_name=settings.EMBED_MODEL_NAME
         )
     return _embed_model
 
