@@ -1,36 +1,28 @@
 /**
  * src/components/ServerDownBanner.jsx
  * ─────────────────────────────────────────────────────────────
- * Dismissible notification banner that appears when the backend
- * API is detected as offline (apiOnline === false).
+ * Persistent maintenance banner shown to all users.
+ *
+ * The backend is currently offline because Hugging Face moved
+ * their Docker tier to a paid plan.  This banner is always
+ * visible (not gated on health-check results) and cannot be
+ * permanently dismissed — it reappears on page reload.
  *
  * Features:
  *   - Slides in from the top with a smooth spring animation
- *   - Auto-dismisses when the server comes back online
- *   - User can manually dismiss; it reappears on next health-check failure
- *   - Pulsing warning icon for visual urgency
+ *   - User can dismiss for the current session
+ *   - Wrench / maintenance icon with pulse animation
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useApp } from "../context/AppContext.jsx";
 
 export default function ServerDownBanner() {
-  const { apiOnline } = useApp();
   const [dismissed, setDismissed] = useState(false);
-
-  // Reset dismissed state when server comes back and then goes down again
-  useEffect(() => {
-    if (apiOnline === true) {
-      setDismissed(false);
-    }
-  }, [apiOnline]);
-
-  const show = apiOnline === false && !dismissed;
 
   return (
     <AnimatePresence>
-      {show && (
+      {!dismissed && (
         <motion.div
           className="server-down-banner"
           initial={{ y: -80, opacity: 0 }}
@@ -39,7 +31,7 @@ export default function ServerDownBanner() {
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         >
           <div className="server-down-banner-inner">
-            {/* Pulsing warning icon */}
+            {/* Pulsing maintenance icon */}
             <div className="server-down-icon">
               <svg
                 width="20"
@@ -51,24 +43,23 @@ export default function ServerDownBanner() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
+                <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
               </svg>
             </div>
 
             {/* Message */}
             <div className="server-down-text">
-              <span className="server-down-title">Server Unreachable</span>
+              <span className="server-down-title">🚧 System Under Maintenance</span>
               <span className="server-down-desc">
-                The backend is currently offline. Some features may be unavailable until the connection is restored.
+                Hugging Face has moved their Docker tier to a paid plan, so our backend is currently offline.
+                All features are unavailable until we migrate to a new hosting solution. We appreciate your patience!
               </span>
             </div>
 
-            {/* Retry indicator — subtle pulsing dot */}
+            {/* Maintenance status badge */}
             <div className="server-down-retry">
               <span className="server-down-retry-dot" />
-              <span className="server-down-retry-label">Retrying…</span>
+              <span className="server-down-retry-label">Maintenance</span>
             </div>
 
             {/* Dismiss button */}
